@@ -1,6 +1,7 @@
-.DS-store
+.DS-Store
 /.vscode/
 /__pycache__/
 *.pyc
 /venv/
 /_build/
+.env
