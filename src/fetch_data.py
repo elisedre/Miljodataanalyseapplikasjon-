@@ -26,4 +26,4 @@ def fetch_data(endpoint, parameters, client_id):
     df = pd.DataFrame(målinger, columns=["Stasjon", "Tidspunkt", "Temperatur"])
     
     # Lagre som JSON
-    df.to_json("../data/weather_data.json", orient="records", indent=4, force_ascii=False)
+    df.to_json("../data/raw_data/weather_data.json", orient="records", indent=4, force_ascii=False)
