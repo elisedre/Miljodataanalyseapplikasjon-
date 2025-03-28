@@ -3,7 +3,7 @@ import json
 import pandas as pd
 
 
-def fetch_nilu_oslo(endpoint, output_file):
+def fetch_air_quality_nilu(endpoint, output_file):
    
     # Hent data fra API
     response = requests.get(endpoint)
