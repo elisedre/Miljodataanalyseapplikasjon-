@@ -4,7 +4,7 @@ import pandas as pd
 def fetch_air_quality_nilu(endpoint, output_file):
     # Definerer tidsperioden som skal dekkes
     start_date = "2010-01-01"
-    end_date = "2024-12-31"
+    end_date = "2018-12-31"
     all_dates = pd.date_range(start=start_date, end=end_date).strftime('%Y-%m-%d')
     
     # Henter data fra API
