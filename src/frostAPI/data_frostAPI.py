@@ -1,0 +1,272 @@
+#Importerte biblioteker
+import requests
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import PowerTransformer
+
+
+#Funksjon for å hente rådata fra Frost API
+def fetch_data_from_frostAPI(endpoint, parameters, client_id):
+    """
+    Henter rådata fra Frost API.
+
+    Args:
+        endpoint (str): API-endepunktet.
+        parameters (dict): Parametere for API-kallet.
+        client_id (str): Client ID for autentisering.
+
+    Returns:
+        list: Liste med data fra API-et, eller en tom liste hvis noe går galt.
+    """
+    response = requests.get(endpoint, params=parameters, auth=(client_id, ""))
+    
+    # Sjekk om forespørselen var vellykket
+    if response.status_code != 200:
+        print("Feil ved henting av data: Status Code:", response.status_code)
+        print("Response Text:", response.text)
+        return []
+    
+    # Returner data fra API-responsen
+    return response.json().get("data", [])
+
+
+#Funksjon for å prosessere rådata
+def process_weather_data(data, elements):
+    """
+    Prosesserer rådata fra Frost API til en liste med dictionaries.
+
+    Args:
+        data (list): Liste med rådata fra API-et.
+        elements (dict): Mapping av elementId til kolonnenavn.
+
+    Returns:
+        list: Liste med prosesserte data.
+    """
+    målinger = []  
+    for måling in data:
+        tidspunkt = måling["referenceTime"]
+        stasjon = måling["sourceId"]
+
+        måling_dict = {"Dato": tidspunkt[:10], "Stasjon": stasjon}
+        
+        for verdi in måling.get("observations", []):
+            if verdi["elementId"] in elements:
+                måling_dict[elements[verdi["elementId"]]] = verdi["value"]
+        
+        
+        målinger.append(måling_dict)
+    return målinger
+
+
+#Funksjon for å lagre data som JSON-fil
+def save_data_as_json(data, file, index_columns, value_columns, aggfunc="mean"):
+    """
+    Lagrer data som JSON-fil med fleksible kolonner og aggregeringsfunksjon.
+
+    Args:
+        data (list): Liste med prosesserte data.
+        file (str): Filsti for lagring av data.
+        index_columns (list): Kolonner som skal brukes som indeks i pivot-tabellen.
+        value_columns (list): Kolonner som skal aggregeres.
+        aggfunc (str or function): Aggregeringsfunksjon (f.eks. "mean", "sum").
+    """
+
+    df = pd.DataFrame(data)
+    
+    pivot_df = df.pivot_table(
+        index=index_columns,  
+        values=value_columns,  
+        aggfunc=aggfunc       
+    ).reset_index()
+    
+    # Lagre pivot-tabellen som en JSON-fil
+    pivot_df.to_json(file, orient="records", indent=4, force_ascii=False)
+    print(f"Gruppert data er lagret under {file}")
+
+
+#Hovedfunksjon for å hente, prosessere og lagre værdata fra Frost API
+def fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements):
+    """
+    Hovedfunksjon for å hente, prosessere og lagre værdata fra Frost API.
+
+    Args:
+        endpoint (str): API-endepunktet.
+        parameters (dict): Parametere for API-kallet.
+        file (str): Filsti for lagring av data.
+        client_id (str): Client ID for autentisering.
+        elements (dict): Mapping av elementId til kolonnenavn.
+    """
+    
+    raw_data = fetch_data_from_frostAPI(endpoint, parameters, client_id)
+    if not raw_data:
+        print("Ingen data hentet.")
+        return
+    
+    processed_data = process_weather_data(raw_data, elements)
+
+    save_data_as_json(
+        data=processed_data,
+        file=file,
+        index_columns=["Dato"],  
+        value_columns=list(elements.values()),  
+        aggfunc="mean"  
+    )
+
+
+#Funksjon for å hente informasjon om tilgjengelige elementer fra Frost API
+def get_info_frostAPI(endpoint, parameters, client_id):
+    """
+    Henter informasjon om tilgjengelige elementer fra Frost API.
+
+    Args:
+        endpoint (str): API-endepunktet.
+        parameters (dict): Parametere for API-kallet.
+        client_id (str): Client ID for autentisering.
+    """
+    response = requests.get(endpoint, params=parameters, auth=(client_id, ''))
+    data = response.json()
+
+    if response.status_code == 200:
+        elements = data['data']
+        for element in elements:
+            print(f"ID: {element['id']}, Navn: {element.get('name', 'Ingen navn')}")
+    else:
+        print(f"Feil ved henting av stasjoner: {data}")
+
+#Funksjon for å fjerne outliers fra data
+def remove_outliers_frost_data(raw_data_file, cols):
+    """
+    Leser JSON-data fra en fil og fjerner outliers basert på standardavvik.
+    Args:
+        raw_data_file (str): Filsti til rådata i JSON-format.
+        cols (list): Liste over kolonner som skal sjekkes for outliers.
+
+    """
+    try:
+        pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
+    except ValueError as e:
+        print(f"Feil ved lesing av rådata-fil: {e}")
+        return
+    
+    # Sørg for at Dato er datetime
+    pivot_df["Dato"] = pd.to_datetime(pivot_df["Dato"])
+    
+    x = 3
+    print("Fjerning av outliers:")
+    print(f"Outliers er mer enn {x} standardavvik unna gjennomsnittet\n")
+
+    for col in cols:
+        mean = pivot_df[col].mean()
+        std = pivot_df[col].std()
+        is_outlier = (pivot_df[col] > mean + x * std) | (pivot_df[col] < mean - x * std)
+        outlier_count = is_outlier.sum()
+        
+
+        print(f"{col}:")
+        print(f"Fjernet {outlier_count} outliers")
+        print(f"Standardavvik: {round(std, 2)}")
+        print(f"Gjennomsnitt: {round(mean, 2)}\n")
+        
+
+        pivot_df.loc[is_outlier, col] = np.nan
+    return pivot_df
+
+
+def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
+    """
+    Setter verdiene som mangler målinger fra til Nan, og interpolerer alle NaN-verdier med linær metode. 
+    Lagre den rensede dataen som en JSON-fil.
+    Args:
+        pivot_df (pd.DataFrame): DataFrame med værdata med fjernet outliers.
+        clean_data_file (str): Filsti for lagring av renset data.
+        from_date (str): Startdato for interpolering i formatet 'YYYY-MM-DD'.
+        to_date (str): Sluttdato for interpolering i formatet 'YYYY-MM-DD'.
+
+    """
+    # Konverterer datoer
+    all_dates = pd.date_range(start=from_date, end=to_date).strftime('%Y-%m-%d')
+    pivot_df["Dato"] = pd.to_datetime(pivot_df["Dato"])
+
+    pivot_df.set_index("Dato", inplace=True)
+    pivot_df = pivot_df.reindex(all_dates)
+    pivot_df.reset_index(inplace=True)
+    pivot_df.rename(columns={"index": "Dato"}, inplace=True)
+
+    print("\nInterpolering av NaN-verdier:")
+    for col in pivot_df.columns:
+        if col != "Dato":
+
+            
+            interpolated_mask = pivot_df[col].isna()
+            null_values = pivot_df[col].isna().sum()
+            pivot_df[col] = pivot_df[col].interpolate(method='linear')
+            
+            interpolated_col_name = f"Interpolert_{col}"
+            pivot_df[interpolated_col_name] = interpolated_mask.fillna(False)
+
+            print(f"{col}: {null_values} verdier ble interpolert")
+
+    # Lagre til JSON
+    pivot_df.to_json(clean_data_file, orient="records", indent=4, force_ascii=False)
+    print(f"\nGruppert data er lagret under {clean_data_file}")
+    
+
+def analyse_and_fix_skewness(clean_data_file, analyzed_data_file):
+    """
+    Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon.
+    Lagre den transformerte dataen til en ny fil.
+    Args:
+        pivot_df (pd.DataFrame): DataFrame med værdata med fjernet outliers.
+        clean_data_file (str): Filsti for lagring av renset data.
+        from_date (str): Startdato for interpolering i formatet 'YYYY-MM-DD'.
+        to_date (str): Sluttdato for interpolering i formatet 'YYYY-MM-DD'.
+
+    """
+   
+    try:
+        pivot_df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
+    except ValueError as e:
+        print(f"Feil ved lesing av fil: {e}")
+        return
+    
+    df_transformed = pivot_df.copy()
+    
+    print("Analyse av skjevhet i dataen:")
+
+    pt = PowerTransformer(method='yeo-johnson')
+    
+    for col in pivot_df.select_dtypes(include=[np.number]).columns:
+        mean = pivot_df[col].mean()
+        median = pivot_df[col].median()
+        changes_count = 0
+        
+        # Hvis det er høyreskjevhet 
+        if mean > median:
+            skewness = 'Positivt skjev (høyreskjev)'
+            transformasjon = 'yeo-johnson'
+            original_values = df_transformed[col].copy()
+            
+            # Bruk Yeo-Johnson for transformasjonen
+            df_transformed[[col]] = pt.fit_transform(df_transformed[[col]])
+            changes_count += (original_values != df_transformed[col]).sum()
+        
+        # Hvis det er venstreskjevhet
+        elif mean < median:
+            skewness = 'Negativt skjev (venstreskjev)'
+            transformasjon = 'yeo-johnson'
+            original_values = df_transformed[col].copy()
+            
+            # Bruk Yeo-Johnson for transformasjonen
+            df_transformed[[col]] = pt.fit_transform(df_transformed[[col]])
+            changes_count += (original_values != df_transformed[col]).sum()
+        
+        else:
+            skewness = 'Symmetrisk'
+            transformasjon = 'ingen'
+
+        print(f"→ {col}: {skewness} | Transformasjon: {transformasjon} | Endrede verdier: {changes_count}")
+
+    df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
+    print(f"\nGruppert data er lagret under {analyzed_data_file}")
+    
+    return df_transformed
