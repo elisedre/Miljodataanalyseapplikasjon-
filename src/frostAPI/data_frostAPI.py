@@ -211,18 +211,17 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     print(f"\nGruppert data er lagret under {clean_data_file}")
     
 
-def analyse_and_fix_skewness(clean_data_file, analyzed_data_file):
+def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols):
+   
     """
     Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon.
     Lagre den transformerte dataen til en ny fil.
     Args:
-        pivot_df (pd.DataFrame): DataFrame med værdata med fjernet outliers.
         clean_data_file (str): Filsti for lagring av renset data.
-        from_date (str): Startdato for interpolering i formatet 'YYYY-MM-DD'.
-        to_date (str): Sluttdato for interpolering i formatet 'YYYY-MM-DD'.
-
+        analyzed_data_file (str): Filsti for lagring av analyserte og transformerte data.
+        threshold (float): Grense for skjevhet, kolonner med høyere skjevhet vil bli transformert.
+        cols (list): Liste med kolonner som skal analyseres og transformeres. Hvis None, analyseres alle numeriske kolonner.
     """
-   
     try:
         pivot_df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
@@ -230,43 +229,32 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file):
         return
     
     df_transformed = pivot_df.copy()
-    
-    print("Analyse av skjevhet i dataen:")
+    transformer = PowerTransformer(method='yeo-johnson')
 
-    pt = PowerTransformer(method='yeo-johnson')
-    
-    for col in pivot_df.select_dtypes(include=[np.number]).columns:
-        mean = pivot_df[col].mean()
-        median = pivot_df[col].median()
-        changes_count = 0
-        
-        # Hvis det er høyreskjevhet 
-        if mean > median:
-            skewness = 'Positivt skjev (høyreskjev)'
-            transformasjon = 'yeo-johnson'
-            original_values = df_transformed[col].copy()
-            
-            # Bruk Yeo-Johnson for transformasjonen
-            df_transformed[[col]] = pt.fit_transform(df_transformed[[col]])
-            changes_count += (original_values != df_transformed[col]).sum()
-        
-        # Hvis det er venstreskjevhet
-        elif mean < median:
-            skewness = 'Negativt skjev (venstreskjev)'
-            transformasjon = 'yeo-johnson'
-            original_values = df_transformed[col].copy()
-            
-            # Bruk Yeo-Johnson for transformasjonen
-            df_transformed[[col]] = pt.fit_transform(df_transformed[[col]])
-            changes_count += (original_values != df_transformed[col]).sum()
-        
-        else:
-            skewness = 'Symmetrisk'
-            transformasjon = 'ingen'
+    if cols is None:
+        cols = df_transformed.select_dtypes(include='number').columns
 
-        print(f"→ {col}: {skewness} | Transformasjon: {transformasjon} | Endrede verdier: {changes_count}")
+    print("Skjevhet før transformasjon:")
+    for col in cols:
+        skew_before = df_transformed[col].skew()
+        print(f"→ {col}: {skew_before:.2f}")
 
+    print(f"\nPåfører Yeo-Johnson på kolonner med skjevhet > ±{threshold}")
+    for col in cols:
+        skew = df_transformed[col].skew()
+        if abs(skew) > threshold:
+            try:
+                
+                df_transformed[col] = transformer.fit_transform(df_transformed[[col]])
+            except Exception as e:
+                print(f"Feil ved transformasjon av {col}: {e}")
+
+    print("\nSkjevhet etter transformasjon:")
+    for col in cols:
+        skew_after = df_transformed[col].skew()
+        print(f"→ {col}: {skew_after:.2f}")
+
+    # Lagre den transformerte dataen til en ny JSON-fil
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nGruppert data er lagret under {analyzed_data_file}")
-    
     return df_transformed
