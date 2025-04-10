@@ -258,3 +258,43 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nGruppert data er lagret under {analyzed_data_file}")
     return df_transformed
+
+
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
+
+def analyse_correlation(data, x_var, y_var):
+    """
+    Undersøk sammenhengen mellom to variabler i værdata.
+    
+    Args:
+        data (list of dict): Innholdet fra JSON-filen.
+        x_var (str): Navnet på variabelen som skal brukes som X-akse.
+        y_var (str): Navnet på variabelen som skal brukes som Y-akse.
+        
+    Printer korrelasjonskoeffisient og p-verdi, og viser scatterplot.
+    """
+    
+    try:
+        x = [entry[x_var] for entry in data if x_var in entry]
+        y = [entry[y_var] for entry in data if y_var in entry]
+        
+        if len(x) != len(y):
+            raise ValueError("Ulik lengde på x og y-data")
+
+        r, p = pearsonr(x, y)
+        print(f"Korrelasjonskoeffisient (r): {r:.3f}")
+        print(f"P-verdi: {p:.3f}")
+
+        plt.scatter(x, y, alpha=0.3, s=10)
+        plt.xlabel(x_var)
+        plt.ylabel(y_var)
+        plt.title(f"Korrelasjon mellom {x_var} og {y_var}")
+        plt.grid(True)
+        plt.show()
+
+    except KeyError as e:
+        print(f"Feil: Fant ikke nøkkelen {e} i dataen.")
+    except Exception as e:
+        print(f"Noe gikk galt: {e}")
+        
