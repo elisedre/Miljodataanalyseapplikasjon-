@@ -319,7 +319,7 @@ def get_season(date):
         return 'Vinter'
 
 
-def calculate_and_plot_seasonal_bars(data, sesonger=None):
+def calculate_and_plot_seasonal_bars(data):
     """
     Beregner og visualiserer gjennomsnittlig temperatur og nedbør per sesong per år
     i form av søylediagrammer.
@@ -349,8 +349,7 @@ def calculate_and_plot_seasonal_bars(data, sesonger=None):
     ]
 
     # Visualiser som søylediagram
-    if sesonger is None:
-        sesonger = ['Vår', 'Sommer', 'Høst', 'Vinter']
+    sesonger = ['Vår', 'Sommer', 'Høst', 'Vinter']
 
     for sesong in sesonger:
         data_sesong = season_stats[season_stats['Sesong'] == sesong]
