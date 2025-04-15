@@ -2,6 +2,8 @@
 import requests
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
 from sklearn.preprocessing import PowerTransformer
 
 
@@ -258,3 +260,125 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nGruppert data er lagret under {analyzed_data_file}")
     return df_transformed
+
+
+
+def analyse_correlation(data, x_var, y_var):
+    """
+    Undersøk sammenhengen mellom to variabler i værdata.
+    
+    Args:
+        data (list of dict): Innholdet fra JSON-filen.
+        x_var (str): Navnet på variabelen som skal brukes som X-akse.
+        y_var (str): Navnet på variabelen som skal brukes som Y-akse.
+        
+    Printer korrelasjonskoeffisient og p-verdi, og viser scatterplot.
+    """
+    
+    try:
+        x = [entry[x_var] for entry in data if x_var in entry]
+        y = [entry[y_var] for entry in data if y_var in entry]
+        
+        if len(x) != len(y):
+            raise ValueError("Ulik lengde på x og y-data")
+
+        r, p = pearsonr(x, y)
+        print(f"Korrelasjonskoeffisient (r): {r:.3f}")
+        print(f"P-verdi: {p:.3f}")
+
+        plt.scatter(x, y, alpha=0.3, s=10)
+        plt.xlabel(x_var)
+        plt.ylabel(y_var)
+        plt.title(f"Korrelasjon mellom {x_var} og {y_var}")
+        plt.grid(True)
+        plt.show()
+
+    except KeyError as e:
+        print(f"Feil: Fant ikke nøkkelen {e} i dataen.")
+    except Exception as e:
+        print(f"Noe gikk galt: {e}")
+
+
+def get_season(date):
+    """
+    Bestemmer hvilken sesong en gitt dato tilhører.
+
+    Argumenter:
+    - date (datetime): En dato i datetime-format.
+
+    Returnerer:
+    - str: Navnet på sesongen ('Vår', 'Sommer', 'Høst', 'Vinter') som datoen tilhører.
+    """
+    if date.month in [3, 4, 5]:
+        return 'Vår'
+    elif date.month in [6, 7, 8]:
+        return 'Sommer'
+    elif date.month in [9, 10, 11]:
+        return 'Høst'
+    else:
+        return 'Vinter'
+
+
+def calculate_and_plot_seasonal_bars(data):
+    """
+    Beregner og visualiserer gjennomsnittlig temperatur og nedbør per sesong per år
+    i form av søylediagrammer.
+
+    Parametere:
+    - data: DataFrame med minst kolonnene 'Dato', 'Temperatur', og 'Nedbør'.
+    - sesonger: Liste med sesonger å vise (f.eks. ['Vår', 'Sommer']), eller None for å vise alle.
+    """
+
+    # Konverter og legg til sesong og år
+    data['Dato'] = pd.to_datetime(data['Dato'])
+
+    data['Sesong'] = data['Dato'].apply(get_season)
+    data['År'] = data['Dato'].dt.year
+
+    # Beregn statistikk
+    season_stats = data.groupby(['År', 'Sesong']).agg({
+        'Temperatur': ['mean', 'std'],
+        'Nedbør': ['mean', 'std']
+    }).reset_index()
+
+    # Gi kolonnene lesbare navn
+    season_stats.columns = [
+        'År', 'Sesong',
+        'Temperatur_Gjennomsnitt', 'Temperatur_Std',
+        'Nedbør_Gjennomsnitt', 'Nedbør_Std'
+    ]
+
+    # Visualiser som søylediagram
+    sesonger = ['Vår', 'Sommer', 'Høst', 'Vinter']
+
+    for sesong in sesonger:
+        data_sesong = season_stats[season_stats['Sesong'] == sesong]
+
+        if data_sesong.empty:
+            print(f"Ingen data for sesongen: {sesong}")
+            continue
+
+        # Temperatur søylediagram
+        plt.figure(figsize=(10, 5))
+        plt.bar(data_sesong['År'], data_sesong['Temperatur_Gjennomsnitt'], yerr=data_sesong['Temperatur_Std'],
+                capsize=5, color='salmon', label='Temperatur')
+        plt.title(f"Gjennomsnittstemperatur per år – {sesong}")
+        plt.xlabel("År")
+        plt.ylabel("Temperatur (°C)")
+        plt.grid(axis='y', linestyle='--', alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+
+        # Nedbør søylediagram
+        plt.figure(figsize=(10, 5))
+        plt.bar(data_sesong['År'], data_sesong['Nedbør_Gjennomsnitt'], yerr=data_sesong['Nedbør_Std'],
+                capsize=5, color='skyblue', label='Nedbør')
+        plt.title(f"Gjennomsnittsnedbør per år – {sesong}")
+        plt.xlabel("År")
+        plt.ylabel("Nedbør (mm)")
+        plt.grid(axis='y', linestyle='--', alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+
+
+        
