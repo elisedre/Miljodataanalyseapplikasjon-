@@ -23,13 +23,15 @@ Hver mappe inneholder en Python-fil som utfører følgende trinn:
 - **Frost API** krever en klient-ID (API-nøkkel), som lastes inn fra en `.env`-fil.
 - **NILU API** er offentlig og krever ingen autorisering.
 
-## 4. Avhengigheter
+## 4. Avhengigheter## 4. Avhengigheter
 For å kjøre koden i `src`-mappen, trenger du følgende Python-moduler:
 - **`requests`**: For å sende HTTP-forespørsler til API-ene (NILU og Frost).
 - **`pandas`**: For å behandle og analysere data.
 - **`matplotlib`**: For å lage statiske grafer.
 - **`plotly`**: For å lage interaktive grafer i Jupyter Notebooks.
-....
+- **`numpy`**: For numeriske beregninger, som gjennomsnitt og standardavvik.
+- **`scikit-learn`**: For datatransformasjoner, som `PowerTransformer`.
+
 
 ### Installering av avhengigheter
 Du kan installere alle nødvendige avhengigheter ved å kjøre følgende kommando:

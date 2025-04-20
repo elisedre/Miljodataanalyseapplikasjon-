@@ -1,13 +1,13 @@
-#Importerte biblioteker
 import requests
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from scipy.stats import pearsonr
 from sklearn.preprocessing import PowerTransformer
 
 
-#Funksjon for å hente rådata fra Frost API
+
 def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     """
     Henter rådata fra Frost API.
@@ -32,7 +32,6 @@ def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     return response.json().get("data", [])
 
 
-#Funksjon for å prosessere rådata
 def process_weather_data(data, elements):
     """
     Prosesserer rådata fra Frost API til en liste med dictionaries.
@@ -60,7 +59,7 @@ def process_weather_data(data, elements):
     return målinger
 
 
-#Funksjon for å lagre data som JSON-fil
+
 def save_data_as_json(data, file, index_columns, value_columns, aggfunc="mean"):
     """
     Lagrer data som JSON-fil med fleksible kolonner og aggregeringsfunksjon.
@@ -86,7 +85,6 @@ def save_data_as_json(data, file, index_columns, value_columns, aggfunc="mean"):
     print(f"Gruppert data er lagret under {file}")
 
 
-#Hovedfunksjon for å hente, prosessere og lagre værdata fra Frost API
 def fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements):
     """
     Hovedfunksjon for å hente, prosessere og lagre værdata fra Frost API.
@@ -115,7 +113,6 @@ def fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements)
     )
 
 
-#Funksjon for å hente informasjon om tilgjengelige elementer fra Frost API
 def get_info_frostAPI(endpoint, parameters, client_id):
     """
     Henter informasjon om tilgjengelige elementer fra Frost API.
@@ -135,7 +132,7 @@ def get_info_frostAPI(endpoint, parameters, client_id):
     else:
         print(f"Feil ved henting av stasjoner: {data}")
 
-#Funksjon for å fjerne outliers fra data
+
 def remove_outliers_frost_data(raw_data_file, cols):
     """
     Leser JSON-data fra en fil og fjerner outliers basert på standardavvik.
@@ -261,8 +258,6 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     print(f"\nGruppert data er lagret under {analyzed_data_file}")
     return df_transformed
 
-
-
 def analyse_correlation(data, x_var, y_var):
     """
     Undersøk sammenhengen mellom to variabler i værdata.
@@ -281,7 +276,7 @@ def analyse_correlation(data, x_var, y_var):
         
         if len(x) != len(y):
             raise ValueError("Ulik lengde på x og y-data")
-
+        
         r, p = pearsonr(x, y)
         print(f"Korrelasjonskoeffisient (r): {r:.3f}")
         print(f"P-verdi: {p:.3f}")
@@ -335,20 +330,18 @@ def calculate_and_plot_seasonal_bars(data):
     data['Sesong'] = data['Dato'].apply(get_season)
     data['År'] = data['Dato'].dt.year
 
-    # Beregn statistikk
+    # Grupperer data etter år og sesong
     season_stats = data.groupby(['År', 'Sesong']).agg({
         'Temperatur': ['mean', 'std'],
         'Nedbør': ['mean', 'std']
     }).reset_index()
 
-    # Gi kolonnene lesbare navn
     season_stats.columns = [
         'År', 'Sesong',
         'Temperatur_Gjennomsnitt', 'Temperatur_Std',
         'Nedbør_Gjennomsnitt', 'Nedbør_Std'
     ]
 
-    # Visualiser som søylediagram
     sesonger = ['Vår', 'Sommer', 'Høst', 'Vinter']
 
     for sesong in sesonger:
@@ -381,4 +374,45 @@ def calculate_and_plot_seasonal_bars(data):
         plt.show()
 
 
-        
+def plot_no2_with_temperature(df):
+    """
+    Lager en linjegraf for Verdi_NO2 med temperatur og NO₂ på to forskjellige y-akser.
+    
+    Forventede kolonner: 'Dato', 'Temperatur', 'Verdi_NO2'
+    """
+
+    df['Dato'] = pd.to_datetime(df['Dato'])
+    df = df.sort_values('Dato')
+
+    fig, ax1 = plt.subplots(figsize=(14, 6))
+
+    # Temperatur på venstre y-akse
+    ax1.set_xlabel("Dato")
+    ax1.set_ylabel("Temperatur (°C)", color='tab:blue')
+    ax1.plot(df['Dato'], df['Temperatur'], color='tab:blue', label='Temperatur', linewidth=2)
+    ax1.tick_params(axis='y', labelcolor='tab:blue')
+
+    # NO₂ på høyre y-akse
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("NO₂ (μg/m³)", color='tab:orange')
+    ax2.plot(df['Dato'], df['Verdi_NO2'], color='tab:orange', label='NO₂ (μg/m³)', linewidth=2)
+    ax2.tick_params(axis='y', labelcolor='tab:orange')
+
+    # tittel og rutenett
+    ax1.set_title("Temperatur og NO₂ over tid")
+    ax1.grid(True, linestyle='--', alpha=0.5)
+
+    # Datoformat på x-aksen
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    plt.xticks(rotation=45)
+
+    sm = plt.cm.ScalarMappable(cmap='coolwarm', norm=plt.Normalize(vmin=df['Temperatur'].min(), vmax=df['Temperatur'].max()))
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax1, orientation='vertical', label='Temperatur (°C)')
+
+    plt.tight_layout()
+    plt.show()
+
+
+
