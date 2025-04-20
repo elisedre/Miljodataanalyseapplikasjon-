@@ -112,6 +112,8 @@ def fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements)
         aggfunc="mean"  
     )
 
+    return processed_data 
+
 
 #Funksjon for å hente informasjon om tilgjengelige elementer fra Frost API
 def get_info_frostAPI(endpoint, parameters, client_id):
