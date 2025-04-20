@@ -4,7 +4,7 @@
 - *tests_frostAPI.py*
 - *tests_niluAPI.py*
 
-Det er viktig å implementere enhetstester for å oppdage tidlig om datagrunnlaget svikter - jo tidligere man oppdager problemer, jo billigere og raskere er det å fikse dem. 
+Det er viktig å implementere enhetstester for å oppdage tidlig om datagrunnlaget svikter - jo tidligere man oppdager problemene, jo billigere og raskere er det å fikse dem. 
 
 ## Tester
 **frostAPI:**
@@ -23,5 +23,5 @@ Det er viktig å implementere enhetstester for å oppdage tidlig om datagrunnlag
 - test_analyse_and_fix_skewness
 
 ## Bakgrunn for valg av tester 
-Pareto-prinsippet (80/20-regelen) er brukt for å konkludere med hvilke tester som skulle lages. Den viktigste komponenten i koden vår er å hente ut data (da dette er grunnpilaren for prosjektet) og disse enhetstestene ble derfor prioritert. Videre var det viktig å fokusere på tester for funksjonene som var nødvendige for korrekte resultater i videre analyse. 
+Pareto-prinsippet (80/20-regelen) er brukt for å konkludere med hvilke tester som skulle lages. Den viktigste komponenten i koden vår er å hente ut data (da dette er grunnpilaren for prosjektet) og disse enhetstestene ble derfor prioritert. Videre var det viktig å fokusere på å opprette tester for funksjonene som er nødvendige at skal funke for korrekte resultater i videre analyse. 
 
