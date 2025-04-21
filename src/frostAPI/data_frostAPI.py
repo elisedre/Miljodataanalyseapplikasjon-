@@ -213,25 +213,31 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     print(f"\nGruppert data er lagret under {clean_data_file}")
     
 
-def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols):
-   
+from sklearn.preprocessing import PowerTransformer, StandardScaler
+import pandas as pd
+
+
+def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
     """
-    Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon.
-    Lagre den transformerte dataen til en ny fil.
+    Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon og/eller skalering.
+    - Kolonner med skjevhet over ±threshold transformeres med Yeo-Johnson og deretter standardiseres.
+    - Kolonner med lavere skjevhet standardiseres direkte.
+
     Args:
-        clean_data_file (str): Filsti for lagring av renset data.
-        analyzed_data_file (str): Filsti for lagring av analyserte og transformerte data.
-        threshold (float): Grense for skjevhet, kolonner med høyere skjevhet vil bli transformert.
-        cols (list): Liste med kolonner som skal analyseres og transformeres. Hvis None, analyseres alle numeriske kolonner.
+        clean_data_file (str): Filsti for input-data (renset).
+        analyzed_data_file (str): Filsti for output-data (transformert).
+        threshold (float): Grense for skjevhet. Kolonner med høyere skjevhet transformeres.
+        cols (list): Valgfrie kolonnenavn for analyse. Hvis None, brukes alle numeriske kolonner.
     """
     try:
-        pivot_df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
+        df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
         print(f"Feil ved lesing av fil: {e}")
         return
     
-    df_transformed = pivot_df.copy()
-    transformer = PowerTransformer(method='yeo-johnson')
+    df_transformed = df.copy()
+    yeo_transformer = PowerTransformer(method='yeo-johnson')
+    scaler = StandardScaler()
 
     if cols is None:
         cols = df_transformed.select_dtypes(include='number').columns
@@ -241,25 +247,29 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
         skew_before = df_transformed[col].skew()
         print(f"→ {col}: {skew_before:.2f}")
 
-    print(f"\nPåfører Yeo-Johnson på kolonner med skjevhet > ±{threshold}")
+    print(f"\nPåfører Yeo-Johnson eller standardisering basert på skjevhet (±{threshold}):")
     for col in cols:
         skew = df_transformed[col].skew()
-        if abs(skew) > threshold:
-            try:
-                
-                df_transformed[col] = transformer.fit_transform(df_transformed[[col]])
-            except Exception as e:
-                print(f"Feil ved transformasjon av {col}: {e}")
+        try:
+            if abs(skew) > threshold:
+                print(f" {col}: Skjevhet {skew:.2f} → bruker Yeo-Johnson + skalering")
+                transformed = yeo_transformer.fit_transform(df_transformed[[col]])
+                df_transformed[col] = scaler.fit_transform(transformed)
+            else:
+                print(f" {col}: Skjevhet {skew:.2f} → bruker kun standardisering")
+                df_transformed[col] = scaler.fit_transform(df_transformed[[col]])
+        except Exception as e:
+            print(f"Feil ved transformasjon av {col}: {e}")
 
     print("\nSkjevhet etter transformasjon:")
     for col in cols:
-        skew_after = df_transformed[col].skew()
-        print(f"→ {col}: {skew_after:.2f}")
+        print(f"→ {col}: {df_transformed[col].skew():.2f}")
 
-    # Lagre den transformerte dataen til en ny JSON-fil
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nGruppert data er lagret under {analyzed_data_file}")
+    print(f"\nTransformert data lagret i {analyzed_data_file}")
+    
     return df_transformed
+
 
 
 

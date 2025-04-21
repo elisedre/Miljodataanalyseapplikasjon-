@@ -140,51 +140,71 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     print(f"\nGruppert data er lagret under {clean_data_file}")
 
 
-def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols):
-   
+from sklearn.preprocessing import PowerTransformer, StandardScaler
+import pandas as pd
+
+def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
     """
-    Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon.
-    Lagre den transformerte dataen til en ny fil.
+    Leser JSON-fil, analyserer og korrigerer skjevhet i dataene.
+    Skjeve kolonner (>|threshold|) får Yeo-Johnson transformasjon og standardisering.
+    Ikke-skjeve kolonner blir kun standardisert.
+    Transformerte verdier lagres i nye kolonner med '_Trans'-suffix.
+
     Args:
-        clean_data_file (str): Filsti for lagring av renset data.
-        analyzed_data_file (str): Filsti for lagring av analyserte og transformerte data.
-        threshold (float): Grense for skjevhet, kolonner med høyere skjevhet vil bli transformert.
-        cols (list): Liste med kolonner som skal analyseres og transformeres. Hvis None, analyseres alle numeriske kolonner.
+        clean_data_file (str): Filsti til ren data.
+        analyzed_data_file (str): Filsti for lagring av transformert data.
+        threshold (float): Grense for skjevhet.
+        cols (list): Kolonner som skal analyseres. Hvis None, velges alle numeriske.
     """
     try:
-        pivot_df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
+        df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
         print(f"Feil ved lesing av fil: {e}")
         return
-    
-    df_transformed = pivot_df.copy()
-    transformer = PowerTransformer(method='yeo-johnson')
+
+    df_transformed = df.copy()
+    yeo = PowerTransformer(method='yeo-johnson')
+    scaler = StandardScaler()
 
     if cols is None:
-        cols = df_transformed.select_dtypes(include='number').columns
+        cols = df.select_dtypes(include='number').columns
 
     print("Skjevhet før transformasjon:")
     for col in cols:
-        skew_before = df_transformed[col].skew()
-        print(f"→ {col}: {skew_before:.2f}")
+        print(f"→ {col}: {df[col].skew():.2f}")
 
-    print(f"\nPåfører Yeo-Johnson på kolonner med skjevhet > ±{threshold}")
+    print(f"\nBehandler kolonner med skjevhet over ±{threshold}:\n")
+
     for col in cols:
-        skew = df_transformed[col].skew()
-        if abs(skew) > threshold:
-            try:
-                
-                df_transformed[col] = transformer.fit_transform(df_transformed[[col]])
-            except Exception as e:
-                print(f"Feil ved transformasjon av {col}: {e}")
+        skew = df[col].skew()
+        new_col = f"{col}_Trans"
+        try:
+            if abs(skew) > threshold:
+                print(f" {col}: skjevhet {skew:.2f} → Yeo-Johnson + skalering")
+                transformed = yeo.fit_transform(df[[col]])
+                scaled = scaler.fit_transform(transformed)
+                df_transformed[new_col] = scaled
+            else:
+                print(f"{col}: skjevhet {skew:.2f} → kun skalering")
+                scaled = scaler.fit_transform(df[[col]])
+                df_transformed[new_col] = scaled
+        except Exception as e:
+            print(f"Feil ved transformasjon av {col}: {e}")
 
     print("\nSkjevhet etter transformasjon:")
     for col in cols:
-        skew_after = df_transformed[col].skew()
-        print(f"→ {col}: {skew_after:.2f}")
+        new_col = f"{col}_Trans"
+        if new_col in df_transformed.columns:
+            print(f"→ {new_col}: {df_transformed[new_col].skew():.2f}")
+    
+    # Fjern de originale verdikolonene og behold kun de transformerte kolonnene
+    transformed_columns = [col for col in df_transformed.columns if "_Trans" in col]
 
-    # Lagre den transformerte dataen til en ny JSON-fil
+    # Velg kun de nødvendige kolonnene (dato, dekningsgrad, og de transformerte verdiene)
+    final_columns = ['Dato', 'Dekningsgrad_NO2', 'Dekningsgrad_O3', 'Dekningsgrad_SO2'] + transformed_columns
+    df_transformed = df_transformed[final_columns]
+
+
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nGruppert data er lagret under {analyzed_data_file}")
-
-
+    print(f"\nTransformert data lagret i: {analyzed_data_file}")
+    return df_transformed
