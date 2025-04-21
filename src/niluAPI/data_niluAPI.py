@@ -1,8 +1,9 @@
-#importerte bibloteker
 import requests
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import PowerTransformer
+import plotly.graph_objects as go
+
 
 def fetch_raw_data_niluAPI(endpoint):
     """
@@ -204,7 +205,61 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     final_columns = ['Dato', 'Dekningsgrad_NO2', 'Dekningsgrad_O3', 'Dekningsgrad_SO2'] + transformed_columns
     df_transformed = df_transformed[final_columns]
 
-
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nTransformert data lagret i: {analyzed_data_file}")
     return df_transformed
+
+def plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolonne="Dato"):
+    """
+    Lager separate figurer for hver verdi og fargekodede punkter for datakvalitet.
+
+    Parametre:
+        df: DataFrame med miljødata
+        verdi_kolonner: Liste med kolonnene som skal plottes (f.eks. ['Verdi_NO2', 'Verdi_O3', 'Verdi_SO2'])
+        dekningsgrad_kolonner: Liste med kolonner som skal brukes til å vurdere datakvalitet (f.eks. ['Dekningsgrad_NO2'])
+        titler: Liste med titler for hver kolonne
+        tidskolonne: Kolonnen som inneholder dato/tid (default 'Dato')
+    """
+    
+    df[tidskolonne] = pd.to_datetime(df[tidskolonne])
+
+    def get_color(row):
+        if not row['Dekningsgrad_NO2'] or not row['Dekningsgrad_O3'] or not row['Dekningsgrad_SO2']:
+            return 'red'  # Interpolerte verdier
+        elif row['Dekningsgrad_NO2'] < 90 or row['Dekningsgrad_O3'] < 90 or row['Dekningsgrad_SO2'] < 90:
+            return 'yellow'  # Dekningsgrad < 90
+        else:
+            return 'green'  # Dekningsgrad >= 90
+
+    df['color'] = df.apply(get_color, axis=1)
+
+    # Lager en figur per verdi-kolonne
+    for i, verdi_kolonne in enumerate(verdi_kolonner):
+        fig = go.Figure()
+
+        
+        fig.add_trace(go.Scatter(
+            x=df[tidskolonne], y=df[verdi_kolonne], mode='markers',
+            marker=dict(color=df['color'], size=6),
+            name=f'Datapunkter for {titler[i]}'
+        ))
+
+        # Legg til trendlinje
+        fig.add_trace(go.Scatter(
+            x=df[tidskolonne], y=df[verdi_kolonne], mode='lines',
+            line=dict(color='blue', width=1), name=f'Trend for {titler[i]}'
+        ))
+
+        # Oppdater layout for hver figur
+        fig.update_layout(
+            title=titler[i],  # Bruker tittel per graf
+            xaxis_title="Dato",
+            yaxis_title=f'Verdi ({verdi_kolonne})',
+            width=1000,
+            height=500
+        )
+
+        fig.show()
+
+
+
