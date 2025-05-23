@@ -64,6 +64,30 @@ def process_and_save_raw_data(data, output_file):
     print(f"Gruppert data er lagret under {output_file}")
 
 
+
+def get_raw_data_niluAPI(): 
+    """ 
+    Spesiell funksjon for å hente ut rådata fra NILU API for Oslo og lagre
+    det i en JSON-fil.
+    Bruker de generelle funksjonene "fetch_raw_data_niluAPI" og "process_and_save_raw_data".
+    """
+
+    base_url = "https://api.nilu.no/stats/day"
+    from_date = "2010-04-02"
+    to_date = "2016-12-31"
+    latitude = 59.9139
+    longitude = 10.7522
+    radius = 20
+    
+    # Bygger API-endepunktet
+    endpoint = f"{base_url}/{from_date}/{to_date}/{latitude}/{longitude}/{radius}"
+
+    output_file =  "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    raw_data= fetch_raw_data_niluAPI(endpoint)
+    processed_data = process_and_save_raw_data(raw_data, output_file)
+    return processed_data
+
+
 def remove_outliers(raw_data_file, cols):
     """
     leser JSON-fil og finner outliers med mer enn 3 standardavvik fra gjennomsnittet.
@@ -140,6 +164,24 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     pivot_df.to_json(clean_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nGruppert data er lagret under {clean_data_file}")
 
+def clean_raw_data():
+    """
+    Henter rådata fra NILU API, fjerner outliers og lagrer renset data i en JSON-fil.
+    Bruker de generelle funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
+    """
+    
+    raw_data_file =  "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    clean_data_file = "../../data/clean_data/niluAPI_clean_data.json"
+    cols= ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
+    from_date = "2010-04-02"
+    to_date = "2016-12-31"
+ 
+    # Først fjern outliers fra rådataene
+    pivot_df = remove_outliers(raw_data_file, cols)
+    # Hvis dataen ble lest riktig, prosesser og lagre dataen
+    if pivot_df is not None:
+        interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
+
 
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 import pandas as pd
@@ -208,6 +250,22 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nTransformert data lagret i: {analyzed_data_file}")
     return df_transformed
+
+#Funskjon som skal nomalfordele skjevheten i dataene med yeo-johnson metoden
+def fix_skewness_data_niluAPI():
+    """
+    Henter renset data fra NILU API, analyserer og fikser skjevhet i dataene.
+    Bruker den generelle funksjonen "analyse_and_fix_skewness".
+    """
+    
+    clean_data_file = "../../data/clean_data/niluAPI_clean_data.json"
+    analyze_data_file= "../../data/analyzed_data/niluAPI_analyzed_data.json"
+    threshold = 1.0
+    cols= ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
+    
+    analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols)
+
+
 
 def plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolonne="Dato"):
     """
