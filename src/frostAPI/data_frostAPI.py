@@ -535,46 +535,24 @@ def calculate_and_plot_seasonal_bars(data):
         plt.tight_layout()
         plt.show()
 
+import json
+import pandas as pd
 
-def plot_no2_with_temperature(df):
+def load_and_plot_frost_seasonal_data():
     """
-    Lager en linjegraf for Verdi_NO2 med temperatur og NO₂ på to forskjellige y-akser.
-    
-    Forventede kolonner: 'Dato', 'Temperatur', 'Verdi_NO2'
+    Leser inn meteorologiske data fra en JSON-fil og visualiserer gjennomsnittlig
+    temperatur og nedbør per sesong per år med `calculate_and_plot_seasonal_bars`.
+
+    Parametere:
+    - filepath (str): Sti til JSON-filen som inneholder dataen.
     """
+    # Lese JSON-filen
+    with open("../../data/clean_data/frostAPI_clean_data.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
 
-    df['Dato'] = pd.to_datetime(df['Dato'])
-    df = df.sort_values('Dato')
+    # Konverter til DataFrame
+    df = pd.DataFrame(data)
 
-    fig, ax1 = plt.subplots(figsize=(14, 6))
-
-    # Temperatur på venstre y-akse
-    ax1.set_xlabel("Dato")
-    ax1.set_ylabel("Temperatur (°C)", color='tab:blue')
-    ax1.plot(df['Dato'], df['Temperatur'], color='tab:blue', label='Temperatur', linewidth=2)
-    ax1.tick_params(axis='y', labelcolor='tab:blue')
-
-    # NO₂ på høyre y-akse
-    ax2 = ax1.twinx()
-    ax2.set_ylabel("NO₂ (μg/m³)", color='tab:orange')
-    ax2.plot(df['Dato'], df['Verdi_NO2'], color='tab:orange', label='NO₂ (μg/m³)', linewidth=2)
-    ax2.tick_params(axis='y', labelcolor='tab:orange')
-
-    # tittel og rutenett
-    ax1.set_title("Temperatur og NO₂ over tid")
-    ax1.grid(True, linestyle='--', alpha=0.5)
-
-    # Datoformat på x-aksen
-    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-    plt.xticks(rotation=45)
-
-    sm = plt.cm.ScalarMappable(cmap='coolwarm', norm=plt.Normalize(vmin=df['Temperatur'].min(), vmax=df['Temperatur'].max()))
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax1, orientation='vertical', label='Temperatur (°C)')
-
-    plt.tight_layout()
-    plt.show()
-
-
+    # Kall på eksisterende funksjon for beregning og visualisering
+    calculate_and_plot_seasonal_bars(df)
 
