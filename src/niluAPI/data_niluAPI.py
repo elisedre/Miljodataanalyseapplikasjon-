@@ -1,6 +1,7 @@
 import requests
 import pandas as pd
 import numpy as np
+import json
 from sklearn.preprocessing import PowerTransformer
 import plotly.graph_objects as go
 
@@ -318,6 +319,26 @@ def plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolo
         )
 
         fig.show()
+
+
+def load_and_plot_air_quality():
+    """
+    Leser luftkvalitetsdata fra JSON og kaller `plot_air_quality` med riktige kolonner og titler.
+
+    """
+
+    with open("../../data/clean_data/niluAPI_clean_data.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    df = pd.DataFrame(data)
+
+    # Definer hvilke kolonner som skal plottes og vurderes
+    verdi_kolonner = ['Verdi_NO2', 'Verdi_O3', 'Verdi_SO2']
+    dekningsgrad_kolonner = ['Dekningsgrad_NO2', 'Dekningsgrad_O3', 'Dekningsgrad_SO2']
+    titler = ['Verdi NO2 over tid', 'Verdi O3 over tid', 'Verdi SO2 over tid']
+
+    # Kjør plot-funksjonen
+    plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolonne="Dato")
 
 
 
