@@ -535,6 +535,29 @@ def calculate_and_plot_seasonal_bars(data):
         plt.tight_layout()
         plt.show()
 
+import json
+import pandas as pd
+
+def load_and_plot_frost_seasonal_data():
+    """
+    Leser inn meteorologiske data fra en JSON-fil og visualiserer gjennomsnittlig
+    temperatur og nedbør per sesong per år med `calculate_and_plot_seasonal_bars`.
+
+    Parametere:
+    - filepath (str): Sti til JSON-filen som inneholder dataen.
+    """
+    # Lese JSON-filen
+    with open("../../data/clean_data/frostAPI_clean_data.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    # Konverter til DataFrame
+    df = pd.DataFrame(data)
+
+    # Kall på eksisterende funksjon for beregning og visualisering
+    calculate_and_plot_seasonal_bars(df)
+
+
+
 
 def plot_no2_with_temperature(df):
     """
