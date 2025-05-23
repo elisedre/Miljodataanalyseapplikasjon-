@@ -195,24 +195,46 @@ def get_stations_frostAPI(client_id):
     get_info_frostAPI(endpoint, parameters, client_id)
 
 
-def calculate_outliers(df, col, threshold=3):
+def remove_outliers(raw_data_file, cols):
     """
-    Beregner outliers for en gitt kolonne basert på standardavvik.
-
+    Leser JSON-fil og finner outliers med mer enn 3 standardavvik fra gjennomsnittet.
+    Fjerner outliers og setter dem til NaN.
+    
     Args:
-        df (pd.DataFrame): Datasettet.
-        col (str): Kolonnenavn som skal analyseres.
-        threshold (float): Antall standardavvik som definerer en outlier.
+        raw_data_file (str): Filsti for rådata.
+        cols (list): Liste over kolonnenavn som skal sjekkes for outliers.
 
     Returns:
-        tuple: Grenser for outliers (lower_limit, upper_limit) og en boolsk maske for outliers.
+        pd.DataFrame: DataFrame med outliers fjernet (som NaN).
     """
-    mean = df[col].mean()
-    std = df[col].std()
-    lower_limit = mean - threshold * std
-    upper_limit = mean + threshold * std
-    is_outlier = (df[col] < lower_limit) | (df[col] > upper_limit)
-    return lower_limit, upper_limit, is_outlier
+    try:
+        pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
+    except ValueError as e:
+        print(f"Feil ved lesing av rådata-fil: {e}")
+        return
+
+    x = 3  # antall standardavvik
+    print("Fjerning av outliers:")
+    print(f"Outliers er mer enn {x} standardavvik unna gjennomsnittet\n")
+
+    if "Dato" in pivot_df.columns:
+        pivot_df["Dato"] = pd.to_datetime(pivot_df["Dato"])
+
+    for col in cols:
+        mean = pivot_df[col].mean()
+        std = pivot_df[col].std()
+
+        is_outlier = (pivot_df[col] > mean + x * std) | (pivot_df[col] < mean - x * std)
+        outlier_count = is_outlier.sum()
+
+        print(f"{col}:")
+        print(f"Fjernet {outlier_count} outliers")
+        print(f"Standardavvik: {round(std, 2)}")
+        print(f"Gjennomsnitt: {round(mean, 2)}\n")
+
+        pivot_df.loc[is_outlier, col] = np.nan
+
+    return pivot_df
 
 
 # Plot outliers
@@ -309,64 +331,38 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
 # Interpolerer og lagrer data uten visualisering
 def clean_data_frostAPI():
     """
-    Leser rådata, analyserer og fjerner outliers, interpolerer manglende verdier,
-    og lagrer den rensede dataen. Uten visualisering.
+    Leser rådata fra Frost API, fjerner outliers og lagrer renset data i en JSON-fil.
+    Bruker de generelle funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
     """
-    # Filer og parametere
+    
     raw_data_file = "../../data/raw_data/frostAPI_data.json"
     clean_data_file = "../../data/clean_data/frostAPI_clean_data.json"
-    from_date = "2010-01-01"
-    to_date = "2016-12-31"
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
-    threshold = 3
+    from_date = "2010-04-02"
+    to_date = "2016-12-31"
+ 
+    # Først fjern outliers fra rådataene
+    pivot_df = remove_outliers(raw_data_file, cols)
+    
+    # Hvis dataen ble lest riktig, prosesser og lagre dataen
+    if pivot_df is not None:
+        interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
 
-    # Last inn data
-    try:
-        df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
-    except ValueError as e:
-        print(f"Feil ved lesing av rådata-fil: {e}")
-        return
-
-    df["Dato"] = pd.to_datetime(df["Dato"])
-
-    # Tekstlig outlier-analyse og fjerning
-    print("Fjerning av outliers:")
-    print(f"Outliers er mer enn {threshold} standardavvik unna gjennomsnittet")
-
-    for col in cols:
-        lower_limit, upper_limit, is_outlier = calculate_outliers(df, col, threshold=threshold)
-        outlier_count = is_outlier.sum()
-        mean = df[col].mean()
-        std = df[col].std()
-
-        print(f"\n{col}:")
-        print(f"Fjernet {outlier_count} outliers")
-        print(f"Standardavvik: {std:.2f}")
-        print(f"Gjennomsnitt: {mean:.2f}")
-        print(f"Grenser: [{lower_limit:.2f}, {upper_limit:.2f}]")
-
-        df.loc[is_outlier, col] = np.nan
-
-    # Interpoler og lagre data
-    interpolate_and_save_clean_data(df, clean_data_file, from_date, to_date)
-
-
+import pandas as pd
+from sklearn.preprocessing import PowerTransformer, StandardScaler
 
 
 def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
+
     """
     Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon og/eller skalering.
     - Kolonner med skjevhet over ±threshold transformeres med Yeo-Johnson og deretter standardiseres.
     - Kolonner med lavere skjevhet standardiseres direkte.
-
     Args:
         clean_data_file (str): Filsti for input-data (renset).
         analyzed_data_file (str): Filsti for output-data (transformert).
         threshold (float): Grense for skjevhet. Kolonner med høyere skjevhet transformeres.
         cols (list): Valgfrie kolonnenavn for analyse. Hvis None, brukes alle numeriske kolonner.
-
-    Returns:
-        pd.DataFrame: DataFrame med transformerte data.
     """
     try:
         df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
@@ -403,26 +399,27 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     print("\nSkjevhet etter transformasjon:")
     for col in cols:
         print(f"→ {col}: {df_transformed[col].skew():.2f}")
-
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nTransformert data lagret i {analyzed_data_file}")
 
     return df_transformed
 
+
 def fix_skewness_data_frostAPI():
     """
-    Wrapper for å transformere Frost-data basert på skjevhet.
-    
-    Returns:
-        pd.DataFrame: Transformert DataFrame for videre analyse.
+    Henter renset data fra Frost API, analyserer og fikser skjevhet i dataene.
+    Bruker den generelle funksjonen "analyse_and_fix_skewness".
     """
     clean_data_file = "../../data/clean_data/frostAPI_clean_data.json"
     analyze_data_file = "../../data/analyzed_data/frostAPI_analyzed_data.json"
     threshold = 1.0
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
 
-    return analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols)
- 
+    analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols)
+
+
+
+
 def analyse_correlation(data, x_var, y_var):
     """
     Undersøk sammenhengen mellom to variabler i værdata.
