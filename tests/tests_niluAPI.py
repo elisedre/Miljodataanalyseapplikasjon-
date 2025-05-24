@@ -61,6 +61,12 @@ class TestProcessRawData(unittest.TestCase):
         finally:
             if os.path.exists(output_file):
                 os.remove(output_file)
+    def test_process_raw_data_empty_input(self):
+        output_file = "empty_output.json"
+        process_and_save_raw_data([], output_file)
+        with open(output_file) as f:
+            result = json.load(f)
+        self.assertEqual(result, [])
 
 class TestRemoveOutliers(unittest.TestCase):
     def test_remove_outliers(self):
@@ -97,6 +103,14 @@ class TestRemoveOutliers(unittest.TestCase):
         finally:
             if os.path.exists(input_file):
                 os.remove(input_file)
+
+    def test_remove_outliers_invalid_column(self):
+        data = [{"Dato": "2024-01-01", "Verdi_X": 100}]
+        input_file = "invalid_col.json"
+        with open(input_file, "w") as f:
+            json.dump(data, f)
+        df = remove_outliers(input_file, cols=["Verdi_NO2"])
+        self.assertIsNotNone(df)
 
 class TestInterpolateCleanData(unittest.TestCase):
     def test_interpolate_and_save_clean_data(self):
@@ -158,8 +172,9 @@ class TestSkewnessAnalysis(unittest.TestCase):
             transformed_value = transformed[0]["Verdi_NO2_Trans"]
             self.assertNotEqual(original_value, transformed_value)
         finally:
-            if os.path.exists(input_file):
-                os.remove(input_file)
+            for f in [input_file, output_file]:  # ← Nå ryddes begge filer
+                if os.path.exists(f):
+                    os.remove(f)
 
     def test_analyse_and_fix_skewness_low_skew(self):
         df = pd.DataFrame({
