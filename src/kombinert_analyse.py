@@ -529,7 +529,7 @@ def plot_polynomial_regression(X, y, level, feature, target_col):
         print(f"Feil under plotting av polynomregresjon: {e}")
 
 
-def vis_polynomregresjon_for_feature(df, feature, target_col, grader=[1, 2, 3], datokolonne="Dato"):
+def visualize_polynomial_fit_for_feature(df, feature, target_col, level=[1, 2, 3], date_col="Dato"):
     """
     Viser polynomregresjon mellom én feature og target med ulike grader.
 
@@ -537,12 +537,14 @@ def vis_polynomregresjon_for_feature(df, feature, target_col, grader=[1, 2, 3], 
         df (pd.DataFrame): Datasettet.
         feature (str): Navnet på inputvariabelen (X).
         target_col (str): Navnet på målvariabelen (y).
-        grader (list): Liste over grader som skal vises (default: [1, 2, 3]).
-        datokolonne (str): Dato-kolonnen som brukes i sesongtransformasjon.
+        level (list): Liste over grader som skal vises (default: [1, 2, 3]).
+        date_col (str): Dato-kolonnen som brukes i sesongtransformasjon.
+    Returns:
+        None. Displays a matplotlib plot showing polynomial fits.
     """
     df = df.copy()
-    df = legg_til_sesongvariabler(df, datokolonne)
+    df = add_seasonal_features(df, date_col)
     X = df[feature].values
     y = df[target_col].values
 
-    plot_polynomial_regression(X, y, grader, feature, target_col)
+    plot_polynomial_regression(X, y, level, feature, target_col)
