@@ -76,8 +76,8 @@ class TestFrostAPIFunctions(unittest.TestCase):
 
             # Sletter testfilen etter testing
             os.remove("test_file")  
+
     def test_process_weather_data(self):
-        
 
         raw_data = [{
             "referenceTime": "2023-02-01T00:00:00Z",
@@ -111,8 +111,8 @@ class TestFrostAPIFunctions(unittest.TestCase):
 
     def test_remove_outliers(self):
 
-        test_data = [{"Dato": f"2023-02-{i:02d}", "Temperatur": 10.0} for i in range(1, 6)]
-        test_data.append({"Dato": "2023-02-06", "Temperatur": 999})  # outlier
+        test_data = [{"Dato": f"2023-02-{i:02d}", "Temperatur": 10.0} for i in range(1, 21)]
+        test_data.append({"Dato": "2023-02-21", "Temperatur": 999})  # outlier
 
         input_file = "outliers_test.json"
         with open(input_file, "w", encoding="utf-8") as f:
@@ -120,7 +120,7 @@ class TestFrostAPIFunctions(unittest.TestCase):
 
         try:
             df = remove_outliers(input_file, ["Temperatur"])
-            self.assertTrue(np.isnan(df.loc[df["Dato"] == "2023-02-06", "Temperatur"]).all())
+            self.assertTrue(np.isnan(df.loc[df["Dato"] == "2023-02-21", "Temperatur"]).all())
         finally:
             os.remove(input_file)
 
@@ -229,7 +229,15 @@ class TestFrostAPIFunctions(unittest.TestCase):
         finally:
             for f in [input_file, output_file]:
                 if os.path.exists(f):
-                    os.remove(f)      
+                    os.remove(f)  
+    def test_get_season(self):
+        from src.frostAPI.data_frostAPI import get_season
+        from datetime import datetime
+
+        self.assertEqual(get_season(datetime(2023, 3, 15)), "Vår")
+        self.assertEqual(get_season(datetime(2023, 7, 1)), "Sommer")
+        self.assertEqual(get_season(datetime(2023, 10, 5)), "Høst")
+        self.assertEqual(get_season(datetime(2023, 12, 25)), "Vinter")
 
 # Kjører testene 
 if __name__ == "__main__":
