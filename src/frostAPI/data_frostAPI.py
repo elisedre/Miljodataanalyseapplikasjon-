@@ -87,47 +87,15 @@ def save_data_as_json(data, file, index_columns, value_columns, aggfunc="mean"):
     print(f"Gruppert data er lagret under {file}")
 
 
-def fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements):
-    """
-    Hovedfunksjon for å hente, prosessere og lagre værdata fra Frost API.
-
-    Args:
-        endpoint (str): API-endepunktet.
-        parameters (dict): Parametere for API-kallet.
-        file (str): Filsti for lagring av data.
-        client_id (str): Client ID for autentisering.
-        elements (dict): Mapping av elementId til kolonnenavn.
-
-    Returns:
-        list: Liste med prosesserte værdata, eller None hvis ingen data ble hentet.  
-    """
-    
-    raw_data = fetch_data_from_frostAPI(endpoint, parameters, client_id)
-    if not raw_data:
-        print("Ingen data hentet.")
-        return
-    
-    processed_data = process_weather_data(raw_data, elements)
-
-    save_data_as_json(
-        data=processed_data,
-        file=file,
-        index_columns=["Dato"],  
-        value_columns=list(elements.values()),  
-        aggfunc="mean"  
-    )
-
-    return processed_data 
-
 def data_frostAPI(client_id):
     """
-    Henter data fra Frost API ved hjelp av en klient-ID.
+    Henter, prosesserer og lagrer værdata fra Frost API.
 
     Argumenter:
-    - client_id (str): En streng som representerer klient-ID-en som brukes for autentisering mot Frost API.
+        client_id (str): En streng som representerer klient-ID-en som brukes for autentisering mot Frost API.
 
-    Returns:
-    - dict: Data hentet fra Frost API i JSON-format.
+    Returnerer:
+        list: Liste med prosesserte værdata, eller None hvis ingen data ble hentet.
     """
 
     endpoint = "https://frost.met.no/observations/v0.jsonld"
@@ -144,7 +112,20 @@ def data_frostAPI(client_id):
         "mean(wind_speed P1D)": "Vindhastighet"
     }
 
-    fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements)
+    raw_data = fetch_data_from_frostAPI(endpoint, parameters, client_id)
+    if not raw_data:
+        print("Ingen data hentet.")
+        return
+
+    processed_data = process_weather_data(raw_data, elements)
+
+    save_data_as_json(
+        data=processed_data,
+        file=file,
+        index_columns=["Dato"],
+        value_columns=list(elements.values()),
+        aggfunc="mean"
+    )
 
 
 def get_info_frostAPI(endpoint, parameters, client_id):
@@ -194,49 +175,6 @@ def get_stations_frostAPI(client_id):
 
     endpoint = 'https://frost.met.no/sources/v0.jsonld'
     get_info_frostAPI(endpoint, parameters, client_id)
-
-
-def remove_outliers(raw_data_file, cols):
-    """
-    Leser JSON-fil og finner outliers med mer enn 3 standardavvik fra gjennomsnittet.
-    Fjerner outliers og setter dem til NaN.
-    
-    Args:
-        raw_data_file (str): Filsti for rådata.
-        cols (list): Liste over kolonnenavn som skal sjekkes for outliers.
-
-    Returns:
-        pd.DataFrame: DataFrame med outliers fjernet (som NaN).
-    """
-    try:
-        pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
-    except ValueError as e:
-        print(f"Feil ved lesing av rådata-fil: {e}")
-        return
-
-    x = 3  # antall standardavvik
-    print("Fjerning av outliers:")
-    print(f"Outliers er mer enn {x} standardavvik unna gjennomsnittet\n")
-
-    if "Dato" in pivot_df.columns:
-        pivot_df["Dato"] = pd.to_datetime(pivot_df["Dato"])
-
-    for col in cols:
-        mean = pivot_df[col].mean()
-        std = pivot_df[col].std()
-
-        is_outlier = (pivot_df[col] > mean + x * std) | (pivot_df[col] < mean - x * std)
-        outlier_count = is_outlier.sum()
-
-        print(f"{col}:")
-        print(f"Fjernet {outlier_count} outliers")
-        print(f"Standardavvik: {round(std, 2)}")
-        print(f"Gjennomsnitt: {round(mean, 2)}\n")
-
-        pivot_df.loc[is_outlier, col] = np.nan
-
-    return pivot_df
-
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
@@ -320,11 +258,13 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     print(f"\nGruppert data er lagret under {clean_data_file}")
 
 
-def clean_data_frostAPI():
+def clean_data_frostAPI(threshold=3):
     """
     Leser rådata fra Frost API, fjerner outliers og lagrer renset data i en JSON-fil.
-    Bruker de generelle funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
+    Bruker funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
 
+    Args:
+        threshold (float, optional): Antall standardavvik for å definere outliers. Default er 3.
     """
     
     raw_data_file = "../../data/raw_data/frostAPI_data.json"
@@ -333,16 +273,15 @@ def clean_data_frostAPI():
     from_date = "2010-04-02"
     to_date = "2016-12-31"
  
-    # Først fjern outliers fra rådataene
-    pivot_df = remove_outliers(raw_data_file, cols)
+    # Fjern outliers fra rådataene
+    from niluAPI.data_niluAPI import remove_outliers
+    pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
     
-    # Hvis dataen ble lest riktig, prosesser og lagre dataen
-    if pivot_df is not None:
+    # Sjekk om dataen ble lastet inn riktig og ikke er tom
+    if pivot_df is not None and not pivot_df.empty:
         interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
-
-import pandas as pd
-from sklearn.preprocessing import PowerTransformer, StandardScaler
-
+    else:
+        print("Data kunne ikke leses eller er tom. Avbryter prosesseringen.")
 
 def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
 
@@ -398,7 +337,6 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
 
     return df_transformed
 
-
 def fix_skewness_data_frostAPI():
     """
     Henter renset data fra Frost API, analyserer og fikser skjevhet i dataene.
@@ -410,7 +348,7 @@ def fix_skewness_data_frostAPI():
     threshold = 1.0
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
 
-    analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols)
+    analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols=None)
 
 
 def get_season(date):
