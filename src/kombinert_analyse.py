@@ -72,3 +72,32 @@ def load_merge_and_plot_no2_temp():
 
     # Kall på plottefunksjonen
     plot_no2_with_temperature(merged_df)
+
+def kombinere_df(file1_path, file2_path, kombineringspunkt):
+    """
+    Leser og slår sammen to JSON-filer, og returnerer et kombinert flat DataFrame.
+    
+    Argumenter:
+    - file1_path: sti til første JSON-fil
+    - file2_path: sti til andre JSON-fil
+    - kombineringspunkt: kolonnenavn for å merge (f.eks. 'Dato')
+    """
+    #Les og normaliser første fil
+    with open(file1_path, "r", encoding="utf-8") as f1:
+        json1 = json.load(f1)
+    df1 = pd.json_normalize(json1)
+
+    #Les og normaliser andre fil
+    with open(file2_path, "r", encoding="utf-8") as f2:
+        json2 = json.load(f2)
+    df2 = pd.json_normalize(json2)
+
+    #Kombiner data
+    df_combined = pd.merge(df1, df2, on=kombineringspunkt, how='inner')
+
+    #Konverter til datetime
+    df_combined[kombineringspunkt] = pd.to_datetime(df_combined[kombineringspunkt])
+
+
+    return df_combined
+
