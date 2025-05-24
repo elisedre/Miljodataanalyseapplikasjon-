@@ -143,42 +143,44 @@ def load_merge_and_plot_no2_temp():
     Leser inn frost- og NILU-data fra JSON-filer, slår sammen på 'Dato',
     og plotter NO₂ og temperatur over tid.
     """
-    merged_df = kombinere_df(
+    merged_df = combine_df(
         "../data/clean_data/frostAPI_clean_data.json",
         "../data/clean_data/niluAPI_clean_data.json",
         "Dato"
     )
 
     plot_temperature_no2(merged_df)
-    
 
-def kombinere_df(file1_path, file2_path, kombineringspunkt):
+
+def combine_df(file1_path, file2_path, combining_point):
     """
     Leser og slår sammen to JSON-filer, og returnerer et kombinert flat DataFrame.
     
     Argumenter:
     - file1_path: sti til første JSON-fil
     - file2_path: sti til andre JSON-fil
-    - kombineringspunkt: kolonnenavn for å merge (f.eks. 'Dato')
+    - combining_point: kolonnenavn for å merge (f.eks. 'Dato')
+
+    Return:
+    - pd.DataFrame: Kombinert DataFrame med flat struktur
     """
-    #Les og normaliser første fil
-    with open(file1_path, "r", encoding="utf-8") as f1:
-        json1 = json.load(f1)
-    df1 = pd.json_normalize(json1)
+    
+    try:
+        with open(file1_path, "r", encoding="utf-8") as f1: #Les og normaliser første fil
+            df1 = pd.json_normalize(json.load(f1))
+        with open(file2_path, "r", encoding="utf-8") as f2:#Les og normaliser andre fil
+            df2 = pd.json_normalize(json.load(f2))
 
-    #Les og normaliser andre fil
-    with open(file2_path, "r", encoding="utf-8") as f2:
-        json2 = json.load(f2)
-    df2 = pd.json_normalize(json2)
+        if combining_point not in df1.columns or combining_point not in df2.columns:
+            raise KeyError(f"Kombinasjonspunktet '{combining_point}' finnes ikke i en av filene.")
 
-    #Kombiner data
-    df_combined = pd.merge(df1, df2, on=kombineringspunkt, how='inner')
+        df_combined = pd.merge(df1, df2, on=combining_point, how="inner") #Kombiner data
+        df_combined[combining_point] = pd.to_datetime(df_combined[combining_point]) #Konverter til datetime
+        return df_combined
 
-    #Konverter til datetime
-    df_combined[kombineringspunkt] = pd.to_datetime(df_combined[kombineringspunkt])
-
-
-    return df_combined
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        print(f"Feil: {e}")
+        return None
 
 def legg_til_sesongvariabler(df, datokolonne="Dato"):
     """
