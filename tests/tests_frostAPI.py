@@ -23,6 +23,7 @@ from src.frostAPI.data_frostAPI import (
 class TestFetchFunctions(unittest.TestCase):
 
     def test_fetch_data_from_frostAPI(self):
+        # Tester at fetch_data_from_frostAPI returnerer korrekt data ved vellykket respons
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {"data": [{"mock": "value"}]}
         with patch("src.frostAPI.data_frostAPI.requests.get", return_value=mock_response):
@@ -30,6 +31,7 @@ class TestFetchFunctions(unittest.TestCase):
             self.assertEqual(result, [{"mock": "value"}])
 
     def test_fetch_data_from_frostAPI_error(self):
+        # Tester at funksjonen returnerer tom liste ved 404-feil
         mock_response = Mock(status_code=404, text="Not Found")
         mock_response.json.return_value = {}
         with patch("src.frostAPI.data_frostAPI.requests.get", return_value=mock_response):
@@ -37,6 +39,7 @@ class TestFetchFunctions(unittest.TestCase):
             self.assertEqual(result, [])
 
     def test_fetch_weather_data_frostAPI(self):
+        # Tester at fetch_weather_data_frostAPI henter, prosesserer og returnerer riktig struktur
         with patch("src.frostAPI.data_frostAPI.fetch_data_from_frostAPI") as mock_fetch:
             mock_fetch.return_value = [{
                 "referenceTime": "2023-02-01T00:00:00Z",
@@ -54,10 +57,11 @@ class TestFetchFunctions(unittest.TestCase):
             self.assertEqual(result, expected)
             os.remove("test_file")
 
-#Prosessering av data 
+# Prosessering av data
 class TestProcessingFunctions(unittest.TestCase):
 
     def test_process_weather_data(self):
+        # Tester at rådata blir riktig prosessert til strukturert format
         raw_data = [{
             "referenceTime": "2023-02-01T00:00:00Z",
             "sourceId": "SN12345",
@@ -71,6 +75,7 @@ class TestProcessingFunctions(unittest.TestCase):
         self.assertEqual(result, [{"Dato": "2023-02-01", "Stasjon": "SN12345", "Temperatur": 2.5, "Vind": 5.0}])
 
     def test_save_data_as_json(self):
+        # Tester at data lagres riktig som JSON med pivotering
         data = [{"Dato": "2023-02-01", "Temperatur": 2.0}]
         file = "saved_file.json"
         try:
@@ -82,10 +87,11 @@ class TestProcessingFunctions(unittest.TestCase):
             if os.path.exists(file):
                 os.remove(file)
 
-# Rensing av data 
+# Rensing av data
 class TestCleaningFunctions(unittest.TestCase):
 
     def test_remove_outliers(self):
+        # Tester at ekstreme verdier (outliers) blir satt til NaN
         test_data = [{"Dato": f"2023-02-{i:02d}", "Temperatur": 10.0} for i in range(1, 21)]
         test_data.append({"Dato": "2023-02-21", "Temperatur": 999})  # outlier
         file = "outliers_test.json"
@@ -97,10 +103,11 @@ class TestCleaningFunctions(unittest.TestCase):
         finally:
             os.remove(file)
 
-#Interpolering 
+# Interpolering
 class TestInterpolationFunctions(unittest.TestCase):
 
     def test_interpolate_and_save_clean_data(self):
+        # Tester at funksjonen interpolerer manglende dato (NaN) korrekt
         df = pd.DataFrame({
             "Dato": ["2023-02-01", "2023-02-03"],
             "Temperatur": [1.0, 3.0]
@@ -116,6 +123,7 @@ class TestInterpolationFunctions(unittest.TestCase):
             os.remove(output_file)
 
     def test_interpolation_when_no_missing_values(self):
+        # Tester at funksjonen ikke endrer verdier når ingen mangler
         df = pd.DataFrame({
             "Dato": pd.date_range("2023-02-01", periods=3),
             "Temperatur": [1.0, 2.0, 3.0]
@@ -129,6 +137,7 @@ class TestInterpolationFunctions(unittest.TestCase):
             os.remove(file)
 
     def test_interpolation_flags_added(self):
+        # Tester at interpolerte verdier blir flagget i ny kolonne
         df = pd.DataFrame({
             "Dato": ["2023-02-01", "2023-02-03"],
             "Temperatur": [1.0, 3.0]
@@ -143,10 +152,11 @@ class TestInterpolationFunctions(unittest.TestCase):
         finally:
             os.remove(file)
 
-#Skjevhetsanalyse
+# Skjevhetsanalyse
 class TestSkewnessFunctions(unittest.TestCase):
 
     def test_analyse_and_fix_skewness(self):
+        # Tester at skjev data blir transformert og standardisert
         test_data = [
             {"Dato": "2023-02-01", "Temperatur": 5.0},
             {"Dato": "2023-02-02", "Temperatur": 150.0},
@@ -165,6 +175,7 @@ class TestSkewnessFunctions(unittest.TestCase):
                 os.remove(f)
 
     def test_analyse_and_fix_skewness_empty_file(self):
+        # Tester at tom input returnerer tomt resultat
         input_file = "empty.json"
         output_file = "transformed_empty.json"
         try:
@@ -176,14 +187,16 @@ class TestSkewnessFunctions(unittest.TestCase):
             for f in [input_file, output_file]:
                 os.remove(f)
 
-#Sesongberegning
+# Sesongberegning
 class TestSeasonUtility(unittest.TestCase):
+
     def test_get_season(self):
+        # Tester at riktig sesong returneres basert på måned
         self.assertEqual(get_season(datetime(2023, 3, 15)), "Vår")
         self.assertEqual(get_season(datetime(2023, 7, 1)), "Sommer")
         self.assertEqual(get_season(datetime(2023, 10, 5)), "Høst")
         self.assertEqual(get_season(datetime(2023, 12, 25)), "Vinter")
 
-#Kjør testene 
+# Kjører testene
 if __name__ == "__main__":
     unittest.main()
