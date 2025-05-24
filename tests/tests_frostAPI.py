@@ -1,12 +1,11 @@
-# Importerer nødvendige biblioteker 
 import unittest
 from unittest.mock import patch, Mock
 import pandas as pd
 import numpy as np
 import json
 import sys, os
+from datetime import datetime
 
-# Legger til riktig sti for å importere moduler
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.frostAPI.data_frostAPI import (
@@ -17,68 +16,48 @@ from src.frostAPI.data_frostAPI import (
     remove_outliers,
     interpolate_and_save_clean_data,
     analyse_and_fix_skewness,
+    get_season
 )
 
-class TestFrostAPIFunctions(unittest.TestCase):
+# Henting av data
+class TestFetchFunctions(unittest.TestCase):
 
     def test_fetch_data_from_frostAPI(self):
-         # Mocker en respons fra API-et
-         mock_response = Mock()
-         mock_response.status_code = 200
-         mock_response.json.return_value = {"data": [{"mock": "value"}]}
-
-         # Bruker patch for å erstatte requests.get med egen mock-respons
-         with patch("src.frostAPI.data_frostAPI.requests.get", return_value=mock_response):
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"data": [{"mock": "value"}]}
+        with patch("src.frostAPI.data_frostAPI.requests.get", return_value=mock_response):
             result = fetch_data_from_frostAPI("test_endpoint", "test_id", ["air_temperature"])
-
-            # Sjekker at funksjonen returnerer riktig data
             self.assertEqual(result, [{"mock": "value"}])
 
     def test_fetch_data_from_frostAPI_error(self):
-        mock_response = Mock()
-        mock_response.status_code = 404
-        mock_response.text = "Not Found"
+        mock_response = Mock(status_code=404, text="Not Found")
         mock_response.json.return_value = {}
-
         with patch("src.frostAPI.data_frostAPI.requests.get", return_value=mock_response):
             result = fetch_data_from_frostAPI("test_endpoint", {}, "test_id")
-            self.assertEqual(result, []) 
-        
+            self.assertEqual(result, [])
 
     def test_fetch_weather_data_frostAPI(self):
-        # Bruker patch for å mocke fetch_data_from_frostAPI
         with patch("src.frostAPI.data_frostAPI.fetch_data_from_frostAPI") as mock_fetch:
-            mock_fetch.return_value = [
-                {
-                    "referenceTime": "2023-02-01T00:00:00Z",
-                    "sourceId": "SN54321",
-                    "observations": [{"elementId": "air_temperature", "value": 2.0}]
-                }
-            ]
-            # Kaller funksjonen med mock-data
+            mock_fetch.return_value = [{
+                "referenceTime": "2023-02-01T00:00:00Z",
+                "sourceId": "SN54321",
+                "observations": [{"elementId": "air_temperature", "value": 2.0}]
+            }]
             result = fetch_weather_data_frostAPI(
-                file="test_file", 
-                client_id="test_id", 
-                elements={"air_temperature": "Temperatur"}, 
+                file="test_file",
+                client_id="test_id",
+                elements={"air_temperature": "Temperatur"},
                 endpoint="test_endpoint",
                 parameters={"mock": "params"}
-             )
-            # Lager forventet resultat
-            expected_result = [
-                {
-                    "Dato": "2023-02-01",
-                    "Stasjon": "SN54321",
-                    "Temperatur": 2.0
-                }
-            ]
-            # Sjekker at resultatet er som forventet
-            self.assertEqual(result, expected_result)
+            )
+            expected = [{"Dato": "2023-02-01", "Stasjon": "SN54321", "Temperatur": 2.0}]
+            self.assertEqual(result, expected)
+            os.remove("test_file")
 
-            # Sletter testfilen etter testing
-            os.remove("test_file")  
+#Prosessering av data 
+class TestProcessingFunctions(unittest.TestCase):
 
     def test_process_weather_data(self):
-
         raw_data = [{
             "referenceTime": "2023-02-01T00:00:00Z",
             "sourceId": "SN12345",
@@ -87,159 +66,124 @@ class TestFrostAPIFunctions(unittest.TestCase):
                 {"elementId": "wind_speed", "value": 5.0}
             ]
         }]
-        elements = {
-            "air_temperature": "Temperatur",
-            "wind_speed": "Vind"
-        }
-
+        elements = {"air_temperature": "Temperatur", "wind_speed": "Vind"}
         result = process_weather_data(raw_data, elements)
         self.assertEqual(result, [{"Dato": "2023-02-01", "Stasjon": "SN12345", "Temperatur": 2.5, "Vind": 5.0}])
 
     def test_save_data_as_json(self):
-
         data = [{"Dato": "2023-02-01", "Temperatur": 2.0}]
-        output_file = "saved_file.json"
-
+        file = "saved_file.json"
         try:
-            save_data_as_json(data, output_file, index_columns=["Dato"], value_columns=["Temperatur"])
-            with open(output_file, "r", encoding="utf-8") as f:
+            save_data_as_json(data, file, ["Dato"], ["Temperatur"])
+            with open(file, "r", encoding="utf-8") as f:
                 content = json.load(f)
             self.assertEqual(content[0]["Temperatur"], 2.0)
         finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
+            if os.path.exists(file):
+                os.remove(file)
+
+# Rensing av data 
+class TestCleaningFunctions(unittest.TestCase):
 
     def test_remove_outliers(self):
-
         test_data = [{"Dato": f"2023-02-{i:02d}", "Temperatur": 10.0} for i in range(1, 21)]
         test_data.append({"Dato": "2023-02-21", "Temperatur": 999})  # outlier
-
-        input_file = "outliers_test.json"
-        with open(input_file, "w", encoding="utf-8") as f:
+        file = "outliers_test.json"
+        with open(file, "w", encoding="utf-8") as f:
             json.dump(test_data, f)
-
         try:
-            df = remove_outliers(input_file, ["Temperatur"])
+            df = remove_outliers(file, ["Temperatur"])
             self.assertTrue(np.isnan(df.loc[df["Dato"] == "2023-02-21", "Temperatur"]).all())
         finally:
-            os.remove(input_file)
+            os.remove(file)
+
+#Interpolering 
+class TestInterpolationFunctions(unittest.TestCase):
 
     def test_interpolate_and_save_clean_data(self):
-        # Lager testdata
         df = pd.DataFrame({
             "Dato": ["2023-02-01", "2023-02-03"],
             "Temperatur": [1.0, 3.0]
         })
-
-        # Omformer Dato-kolonnen til datetime-format
         df["Dato"] = pd.to_datetime(df["Dato"])
-        # Lagrer testdata i en midlertidig json-fil
         output_file = "interpolated_data.json"
-
         try:
             interpolate_and_save_clean_data(df, output_file, "2023-02-01", "2023-02-03")
-            # Leser den interpolerte dataen fra filen
             result = pd.read_json(output_file)
-
-            # Henter interpolert verdi for 2023-02-02
             interpolated_value = result.loc[result["Dato"] == "2023-02-02", "Temperatur"].iloc[0]
-
-            # Sjekker at interpoleringen er korrekt
             self.assertAlmostEqual(interpolated_value, 2.0)
-
-        finally:   
-            # Sletter filen etter testing
+        finally:
             os.remove(output_file)
+
     def test_interpolation_when_no_missing_values(self):
         df = pd.DataFrame({
             "Dato": pd.date_range("2023-02-01", periods=3),
             "Temperatur": [1.0, 2.0, 3.0]
         })
-        output_file = "no_missing.json"
-
+        file = "no_missing.json"
         try:
-            interpolate_and_save_clean_data(df, output_file, "2023-02-01", "2023-02-03")
-            result = pd.read_json(output_file)
-
-            # Bekreft at ingen verdier var NaN
+            interpolate_and_save_clean_data(df, file, "2023-02-01", "2023-02-03")
+            result = pd.read_json(file)
             self.assertFalse(result["Temperatur"].isna().any())
         finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
-    
+            os.remove(file)
+
     def test_interpolation_flags_added(self):
         df = pd.DataFrame({
             "Dato": ["2023-02-01", "2023-02-03"],
             "Temperatur": [1.0, 3.0]
         })
         df["Dato"] = pd.to_datetime(df["Dato"])
-        output_file = "flagged.json"
-
+        file = "flagged.json"
         try:
-            interpolate_and_save_clean_data(df, output_file, "2023-02-01", "2023-02-03")
-            result = pd.read_json(output_file)
-
-            # Sjekk at interpolert kolonne finnes og flagges riktig
+            interpolate_and_save_clean_data(df, file, "2023-02-01", "2023-02-03")
+            result = pd.read_json(file)
             self.assertIn("Interpolert_Temperatur", result.columns)
-            is_interpolated = result.loc[result["Dato"] == "2023-02-02", "Interpolert_Temperatur"].iloc[0]
-            self.assertTrue(is_interpolated)
-
+            self.assertTrue(result.loc[result["Dato"] == "2023-02-02", "Interpolert_Temperatur"].iloc[0])
         finally:
-            if os.path.exists(output_file):
-                os.remove(output_file)
+            os.remove(file)
+
+#Skjevhetsanalyse
+class TestSkewnessFunctions(unittest.TestCase):
 
     def test_analyse_and_fix_skewness(self):
-         # Lager testdata med skjevhet 
-         test_data = [
+        test_data = [
             {"Dato": "2023-02-01", "Temperatur": 5.0},
             {"Dato": "2023-02-02", "Temperatur": 150.0},
             {"Dato": "2023-02-03", "Temperatur": 7.0}
-         ] 
-         
-         input_file = "clean_data.json"
-         output_file = "transformed_data.json"
-
-         try:
+        ]
+        input_file = "clean_data.json"
+        output_file = "transformed_data.json"
+        try:
             with open(input_file, "w", encoding="utf-8") as f:
                 json.dump(test_data, f)
-            
             result = analyse_and_fix_skewness(input_file, output_file, threshold=3)
-            # Lager en DataFrame med opprinnelige verider som skal sammenlignes med resultatet
-            original_df = pd.DataFrame(test_data)
-
-            # Tester om skjevheten er fikset
-            self.assertFalse(result["Temperatur"].equals(original_df["Temperatur"]))
-
-         finally:
-            # Sletter filene etter testing
-            os.remove(input_file)
-            os.remove(output_file)
+            original = pd.DataFrame(test_data)
+            self.assertFalse(result["Temperatur"].equals(original["Temperatur"]))
+        finally:
+            for f in [input_file, output_file]:
+                os.remove(f)
 
     def test_analyse_and_fix_skewness_empty_file(self):
         input_file = "empty.json"
         output_file = "transformed_empty.json"
-
         try:
             with open(input_file, "w", encoding="utf-8") as f:
-                json.dump([], f)  # Tom liste
-
+                json.dump([], f)
             result = analyse_and_fix_skewness(input_file, output_file, threshold=3)
-            self.assertTrue(result.empty)  
-
+            self.assertTrue(result.empty)
         finally:
             for f in [input_file, output_file]:
-                if os.path.exists(f):
-                    os.remove(f)  
-    def test_get_season(self):
-        from src.frostAPI.data_frostAPI import get_season
-        from datetime import datetime
+                os.remove(f)
 
+#Sesongberegning
+class TestSeasonUtility(unittest.TestCase):
+    def test_get_season(self):
         self.assertEqual(get_season(datetime(2023, 3, 15)), "Vår")
         self.assertEqual(get_season(datetime(2023, 7, 1)), "Sommer")
         self.assertEqual(get_season(datetime(2023, 10, 5)), "Høst")
         self.assertEqual(get_season(datetime(2023, 12, 25)), "Vinter")
 
-# Kjører testene 
+#Kjør testene 
 if __name__ == "__main__":
     unittest.main()
-
