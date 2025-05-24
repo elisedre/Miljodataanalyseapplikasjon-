@@ -75,28 +75,40 @@ class TestNiluAPI(unittest.TestCase):
         # Lager testdata med skjevhet 
         df = pd.DataFrame({
             "Dato": ["2024-01-01", "2024-01-02", "2024-01-03"],
-            "Verdi_NO2": [1, 1, 10]  
-        })
+                "Verdi_NO2": [1, 1, 10],
+                "Dekningsgrad_NO2": [True, True, True],
+                "Dekningsgrad_O3": [True, True, True],          # <– Legg til disse
+                "Dekningsgrad_SO2": [True, True, True]})
+        
         input_file = "clean_data.json"
         output_file = "transformed_data.json"
 
         try:
-            # Konverterer df til JSON og lagrer det i input_file
+            # Lagrer testdata som JSON
             df.to_json(input_file, orient="records")
 
-            analyse_and_fix_skewness(input_file, output_file)
+            # Kjører transformasjonsfunksjonen
+            analyse_and_fix_skewness(input_file, output_file, threshold=3)
 
-            # Leser den transformerte dataen fra filen
+            # Leser inn transformert fil
             with open(output_file, "r", encoding="utf-8") as f:
                 transformed = json.load(f)
 
-            # Sjekker at transformasjonen har skjedd
-            self.assertNotEqual(transformed[0]["Verdi_NO2"], 1)  
-        
+            # Sjekker at transformert kolonne finnes
+            self.assertIn("Verdi_NO2_Trans", transformed[0])
+
+            # Verifiser at verdien faktisk er transformert (ikke samme som original)
+            original_value = df["Verdi_NO2"].iloc[0]
+            transformed_value = transformed[0]["Verdi_NO2_Trans"]
+            self.assertNotEqual(original_value, transformed_value)
+
         finally:
-            # Sletter filene etter testing
-            os.remove(input_file)
-            os.remove(output_file)
+            # Sikker sletting av midlertidige filer
+            if os.path.exists(input_file):
+                os.remove(input_file)
+            if os.path.exists(output_file):
+                os.remove(output_file)
+
 
 
 # Kjører testene 
