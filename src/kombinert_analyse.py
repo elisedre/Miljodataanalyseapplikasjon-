@@ -1,22 +1,14 @@
 import json
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import pandas as pd
-import numpy as np
-import lightgbm as lgb
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-from datetime import timedelta
-import json
 from sklearn.metrics import r2_score, mean_squared_error
-from lightgbm import LGBMRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
 from sklearn.base import clone
+from lightgbm import LGBMRegressor
 import plotly.graph_objects as go
-import pandas as pd
 
 
 def plot_no2_with_temperature(df):
