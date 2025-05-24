@@ -458,7 +458,7 @@ def prediction_with_futurevalues(df, target_col, features, model_object,
     plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, coverage)
 
 
-def vis_koeffisienter_linærmodell(df, features, target_cols, datokolonne="Dato"):
+def plot_linear_model_coefficients(df, features, target_cols, date_col="Dato"):
     """
     Viser koeffisienter fra lineær regresjon for hver target-kolonne.
 
@@ -467,21 +467,24 @@ def vis_koeffisienter_linærmodell(df, features, target_cols, datokolonne="Dato"
         features (list of str): Liste over inputvariabler.
         target_cols (list of str): Liste over målvariabler som skal evalueres.
         datokolonne (str): Navn på datokolonnen for sesongfeature-generering.
+    
+    Returns:
+        None: Viser et stolpediagram for hver target-kolonne med koeffisienter.
     """
-    df = legg_til_sesongvariabler(df, datokolonne)
 
-    for target in target_cols:
-        f_clean = [f for f in features if f != target]
+    try:
+        df = add_seasonal_features(df, date_col)
 
-        model = tren_modell(df, target, f_clean, LinearRegression())
+        for target in target_cols:
+            model = train_model(df, target, [f for f in features if f != target], LinearRegression())
+            coeffs = pd.Series(model.coef_, index=[f for f in features if f != target])
+            coeffs.plot(kind="bar", title=f"Coefficients for {target}", color="skyblue")
+            plt.ylabel("Coefficient value")
+            plt.tight_layout()
+            plt.show()
 
-        # Hent og vis koeffisienter
-        coeffs = pd.Series(model.coef_, index=f_clean)
-
-        coeffs.plot(kind="bar", title=f"Koeffisienter for {target}", color="skyblue")
-        plt.ylabel("Koeffisient")
-        plt.tight_layout()
-        plt.show()
+    except Exception as e:
+        print(f"Feil ved plotting av koeffisienter: {e}")
 
 def plot_polynomregresjon(X, y, grader, feature, target_col):
     """
