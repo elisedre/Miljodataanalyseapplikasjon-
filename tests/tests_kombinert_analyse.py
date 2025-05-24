@@ -5,11 +5,14 @@ import numpy as np
 import json
 import sys, os
 from datetime import datetime
+from lightgbm import LGBMRegressor
+from sklearn.linear_model import LinearRegression
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.kombinert_analyse import (
-    kombinere_df
+    kombinere_df,
+    tren_modell
 )
 
 
@@ -30,7 +33,10 @@ class TestFetchFunctions(unittest.TestCase):
         os.remove("f1.json")
         os.remove("f2.json")
     
-    
+    def test_tren_modell(self):
+        df = pd.DataFrame({"x": [1, 2, 3], "y": [2, 4, 6]})
+        model = tren_modell(df, "y", ["x"], LinearRegression())
+        self.assertAlmostEqual(model.coef_[0], 2.0)
 
 if __name__ == "__main__":
     unittest.main()
