@@ -486,36 +486,48 @@ def plot_linear_model_coefficients(df, features, target_cols, date_col="Dato"):
     except Exception as e:
         print(f"Feil ved plotting av koeffisienter: {e}")
 
-def plot_polynomregresjon(X, y, grader, feature, target_col):
+def plot_polynomial_regression(X, y, level, feature, target_col):
     """
     Lager et scatterplot og polynomkurver for gitt X og y.
 
     Args:
         X (np.ndarray): Inputvariabel (1D array).
         y (np.ndarray): Målvariabel.
-        grader (list): Grader av polynomer som skal tegnes.
-        feature (str): Navn på feature (for labels).
-        target_col (str): Navn på target (for labels).
+        level (list): Grader av polynomer som skal tegnes (f.eks. [1, 2, 3]).
+        feature (str): Navn på inputvariabelen (for akselabel).
+        target_col (str): Navn på målvariabelen (for akselabel).
+
+    Returns:
+        None. Viser en matplotlib-figur med scatterplot og regresjonslinjer.
     """
-    x_range = np.linspace(X.min(), X.max(), 300)
+    try:
+        # Lag en jevn fordeling av X-verdier til prediksjonslinjene
+        x_range = np.linspace(X.min(), X.max(), 300)
 
-    plt.figure(figsize=(10, 5))
-    plt.scatter(X, y, s=10, color="lightgray", label="Faktiske data")
+        plt.figure(figsize=(10, 5))
+        plt.scatter(X, y, s=10, color="lightgray", label="Faktiske data")
 
-    for deg in grader:
-        model = np.poly1d(np.polyfit(X, y, deg))
-        y_pred = model(X)
-        r2 = r2_score(y, y_pred)
-        plt.plot(x_range, model(x_range), label=f"{deg}. grad (R²={r2:.3f})")
-    
+        for lev in level:
+            # Tren og bruk polynommodell
+            model = np.poly1d(np.polyfit(X, y, lev))
+            y_pred = model(X)
+            r2 = r2_score(y, y_pred)
 
-    plt.xlabel(feature)
-    plt.ylabel(target_col)
-    plt.title(f"Polynomregresjon: {feature} → {target_col}")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.show()
+            # Tegn regresjonslinje med R²-score i label
+            plt.plot(x_range, model(x_range), label=f"{lev}. grad (R²={r2:.3f})")
+
+        # Formatering av plottet
+        plt.xlabel(feature)
+        plt.ylabel(target_col)
+        plt.title(f"Polynomregresjon: {feature} → {target_col}")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(f"Feil under plotting av polynomregresjon: {e}")
+
 
 def vis_polynomregresjon_for_feature(df, feature, target_col, grader=[1, 2, 3], datokolonne="Dato"):
     """
@@ -533,4 +545,4 @@ def vis_polynomregresjon_for_feature(df, feature, target_col, grader=[1, 2, 3], 
     X = df[feature].values
     y = df[target_col].values
 
-    plot_polynomregresjon(X, y, grader, feature, target_col)
+    plot_polynomial_regression(X, y, grader, feature, target_col)
