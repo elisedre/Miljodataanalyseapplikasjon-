@@ -12,7 +12,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.kombinert_analyse import (
     kombinere_df,
-    tren_modell
+    tren_modell,
+    prediker_fremtid,
+    legg_til_sesongvariabler
 )
 
 
@@ -37,6 +39,18 @@ class TestFetchFunctions(unittest.TestCase):
         df = pd.DataFrame({"x": [1, 2, 3], "y": [2, 4, 6]})
         model = tren_modell(df, "y", ["x"], LinearRegression())
         self.assertAlmostEqual(model.coef_[0], 2.0)
+    
+    def test_prediker_fremtid(self):
+        df = pd.DataFrame({
+            "Dato": pd.date_range("2023-01-01", periods=5),
+            "x": [1, 2, 3, 4, 5],
+            "y": [2, 4, 6, 8, 10]
+        })
+        df = legg_til_sesongvariabler(df)
+        model = tren_modell(df, "y", ["x", "måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"], LinearRegression())
+        future = prediker_fremtid(df, model, ["x", "måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"], "y", 2)
+        self.assertEqual(len(future), 2)
+        self.assertIn("predicted_y", future.columns)
 
 if __name__ == "__main__":
     unittest.main()
