@@ -459,4 +459,72 @@ def analyze_frost_nilu():
         airquality2="Verdi_NO2"
     )
 
+def analyze_monthly_avg_pollution_data(df, date_col, no2_col, o3_col, so2_col):
+    """
+    Beregner og visualiserer månedlig gjennomsnitt for NO2, O3 og SO2 basert på luftkvalitetsdata.
 
+    Args:
+        df (pd.DataFrame): DataFrame med luftkvalitetsdata.
+        date_col (str): Kolonnenavn for dato.
+        no2_col (str): Kolonnenavn for NO2-verdier.
+        o3_col (str): Kolonnenavn for O3-verdier.
+        so2_col (str): Kolonnenavn for SO2-verdier.
+
+    Returns:
+        pd.DataFrame: DataFrame med månedlig gjennomsnitt for NO2, O3 og SO2.
+    """
+
+    # Legger til kolonne for måned basert på valgt datokolonne
+    df["Dato"] = pd.to_datetime(df[date_col])
+
+    query = f"""
+    SELECT 
+        strftime('%Y-%m', Dato) AS Måned, 
+        AVG({no2_col}) AS Snitt_NO2,
+        AVG({o3_col}) AS Snitt_O3,
+        AVG({so2_col}) AS Snitt_SO2,
+        COUNT(*) AS AntallDager
+    FROM df
+    GROUP BY Måned
+    ORDER BY Måned
+    """
+    monthly_stats = psql.sqldf(query, locals())
+   
+
+    # Plotting
+    sns.set(style="whitegrid")
+    plt.figure(figsize=(14, 7))
+
+    sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_NO2", label="NO2", marker="o")
+    sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_O3", label="O3", marker="o")
+    sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_SO2", label="SO2", marker="o")
+
+    plt.title("Månedlig gjennomsnitt for NO2, O3 og SO2", fontsize=16)
+    plt.xlabel("Måned")
+    plt.ylabel("Gjennomsnittlig verdi (μg/m³)")
+    plt.xticks(rotation=45)
+    plt.gca().set_xticks(monthly_stats['Måned'][::3])
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    return monthly_stats
+
+def analyze_monthly_avg_nilu_data():
+    """
+    Leser inn rengjorte NILU-data og analyserer månedlig gjennomsnitt for NO2, O3 og SO2
+    ved å kalle den generelle funksjonen "analyze_monthly_avg_pollution_data".
+
+    Returns:
+        pd.DataFrame: DataFrame med månedlig gjennomsnitt for NO2, O3 og SO2.
+    """
+    file_path = "../../data/clean_data/niluAPI_clean_data.json"
+    df = pd.read_json(file_path)
+
+    return analyze_monthly_avg_pollution_data(
+        df,
+        date_col="Dato",
+        no2_col="Verdi_NO2",
+        o3_col="Verdi_O3",
+        so2_col="Verdi_SO2"
+    )
