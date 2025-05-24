@@ -344,61 +344,6 @@ import pandas as pd
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 
 
-def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
-
-    """
-    Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon og/eller skalering.
-    - Kolonner med skjevhet over ±threshold transformeres med Yeo-Johnson og deretter standardiseres.
-    - Kolonner med lavere skjevhet standardiseres direkte.
-
-    Args:
-        clean_data_file (str): Filsti for input-data (renset).
-        analyzed_data_file (str): Filsti for output-data (transformert).
-        threshold (float): Grense for skjevhet. Kolonner med høyere skjevhet transformeres.
-        cols (list): Valgfrie kolonnenavn for analyse. Hvis None, brukes alle numeriske kolonner.
-
-    """
-    try:
-        df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
-    except ValueError as e:
-        print(f"Feil ved lesing av fil: {e}")
-        return
-    
-    df_transformed = df.copy()
-    yeo_transformer = PowerTransformer(method='yeo-johnson')
-    scaler = StandardScaler()
-
-    if cols is None:
-        cols = df_transformed.select_dtypes(include='number').columns
-
-    print("Skjevhet før transformasjon:")
-    for col in cols:
-        skew_before = df_transformed[col].skew()
-        print(f"→ {col}: {skew_before:.2f}")
-
-    print(f"\nPåfører Yeo-Johnson eller standardisering basert på skjevhet (±{threshold}):")
-    for col in cols:
-        skew = df_transformed[col].skew()
-        try:
-            if abs(skew) > threshold:
-                print(f" {col}: Skjevhet {skew:.2f} → bruker Yeo-Johnson + skalering")
-                transformed = yeo_transformer.fit_transform(df_transformed[[col]])
-                df_transformed[col] = scaler.fit_transform(transformed)
-            else:
-                print(f" {col}: Skjevhet {skew:.2f} → bruker kun standardisering")
-                df_transformed[col] = scaler.fit_transform(df_transformed[[col]])
-        except Exception as e:
-            print(f"Feil ved transformasjon av {col}: {e}")
-
-    print("\nSkjevhet etter transformasjon:")
-    for col in cols:
-        print(f"→ {col}: {df_transformed[col].skew():.2f}")
-    df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nTransformert data lagret i {analyzed_data_file}")
-
-    return df_transformed
-
-
 def fix_skewness_data_frostAPI():
     """
     Henter renset data fra Frost API, analyserer og fikser skjevhet i dataene.
@@ -410,6 +355,7 @@ def fix_skewness_data_frostAPI():
     threshold = 1.0
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
 
+    from niluAPI.data_niluAPI import analyse_and_fix_skewness
     analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols)
 
 
