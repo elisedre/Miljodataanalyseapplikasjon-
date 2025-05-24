@@ -53,6 +53,133 @@ def plot_no2_with_temperature(df):
 
 
 
+
+def prepare_dataframe(df, date_col):
+    """
+    Gjør klar DataFrame ved å konvertere og sortere datokolonnen.
+
+    Args:
+        df (pd.DataFrame): Datasettet som skal behandles.
+        date_col (str): Navnet på kolonnen som inneholder dato.
+
+    Returns:
+        pd.DataFrame: Sortert DataFrame med konvertert datokolonne.
+
+    Raises:
+        ValueError: Hvis datokolonnen mangler eller kan ikke konverteres.
+    """
+    df = df.copy()
+    if date_col not in df.columns:
+        raise ValueError(f"Kolonnen '{date_col}' finnes ikke i datasettet.")
+
+    try:
+        df[date_col] = pd.to_datetime(df[date_col])
+    except Exception as e:
+        raise ValueError(f"Kunne ikke konvertere '{date_col}' til dato: {e}")
+    
+    return df.sort_values(date_col)
+
+def create_dual_axis_plot(df, date_col, y1_col, y2_col, y1_label, y2_label, y1_color, y2_color):
+    """
+    Lager et plott med to y-akser på samme tidsakse.
+
+    Args:
+        df (pd.DataFrame): Datasettet som skal plottes.
+        date_col (str): Navnet på datokolonnen.
+        y1_col (str): Kolonne for venstre y-akse.
+        y2_col (str): Kolonne for høyre y-akse.
+        y1_label (str): Etikett for venstre y-akse.
+        y2_label (str): Etikett for høyre y-akse.
+        y1_color (str): Farge for venstre linje.
+        y2_color (str): Farge for høyre linje.
+
+    Returns:
+        tuple: (fig, ax1) – Matplotlib-figur og primærakse.
+    
+    Raises:
+        ValueError: Hvis kolonner mangler.
+    """
+    for col in [y1_col, y2_col]:
+        if col not in df.columns:
+            raise ValueError(f"Mangler kolonne: '{col}'")
+        
+    fig, ax1 = plt.subplots(figsize=(14, 6))
+
+    ax1.set_xlabel("Dato")
+    ax1.set_ylabel(y1_label, color=y1_color)
+    ax1.plot(df[date_col], df[y1_col], color=y1_color, linewidth=2)
+    ax1.tick_params(axis='y', labelcolor=y1_color)
+    ax1.grid(True, linestyle='--', alpha=0.5)
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel(y2_label, color=y2_color)
+    ax2.plot(df[date_col], df[y2_col], color=y2_color, linewidth=2)
+    ax2.tick_params(axis='y', labelcolor=y2_color)
+
+    return fig, ax1
+
+def plot_dual_time_series(df, date_col, y1_col, y2_col, y1_label, y2_label, title, y1_color,
+                          y2_color, show_colorbar=True):
+    """
+    Visualiserer to tidsserier på samme graf med to y-akser.
+
+    Args:
+        df (pd.DataFrame): Datasettet som inneholder verdiene.
+        date_col (str): Kolonnen med datoer.
+        y1_col (str): Kolonnen for venstre y-akse.
+        y2_col (str): Kolonnen for høyre y-akse.
+        y1_label (str): Tekst for venstre y-akse.
+        y2_label (str): Tekst for høyre y-akse.
+        title (str): Tittel på figuren.
+        y1_color (str): Farge for venstre dataserie.
+        y2_color (str): Farge for høyre dataserie.
+        show_colorbar (bool): Om fargeskala skal vises basert på y1_col.
+
+    Returns:
+        None
+    """
+    try:
+        df = prepare_dataframe(df, date_col)
+        fig, ax1 = create_dual_axis_plot(df, date_col, y1_col, y2_col, y1_label, y2_label, y1_color, y2_color)
+    except Exception as e:
+        print(f"Feil under plotting: {e}")
+        return
+
+    try:
+        ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+        plt.xticks(rotation=45)
+
+        if show_colorbar and pd.api.types.is_numeric_dtype(df[y1_col]):
+            sm = plt.cm.ScalarMappable(
+                cmap='coolwarm',
+                norm=plt.Normalize(vmin=df[y1_col].min(), vmax=df[y1_col].max())
+            )
+            sm.set_array([])
+            plt.colorbar(sm, ax=ax1, orientation='vertical', label=y1_label)
+
+        ax1.set_title(title)
+        plt.tight_layout()
+        plt.show()
+    except Exception as e:
+        print(f"Feil under visning av plott: {e}")
+
+def plot_temperature_no2(df):
+    """
+    Viser et ferdig oppsett for visualisering av temperatur og NO₂ over tid.
+
+    Args:
+        df (pd.DataFrame): Datasett med kolonnene 'Dato', 'Temperatur' og 'Verdi_NO2'.
+
+    Returns:
+        Visualisering av temperatur og NO₂ på to y-akser.
+    """
+    plot_dual_time_series(df=df, date_col="Dato", y1_col="Temperatur", y2_col="Verdi_NO2", y1_label="Temperatur (°C)",
+                          y2_label="NO₂ (μg/m³)", title="Temperatur og NO₂ over tid", y1_color="tab:blue",
+                          y2_color="tab:orange", show_colorbar=True)
+
+
+
 def load_merge_and_plot_no2_temp():
     """
     Leser inn frost- og nilu-data fra JSON-filer, slår sammen på 'Dato',
