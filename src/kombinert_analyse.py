@@ -248,44 +248,55 @@ def train_model(df, target_col, features, model_object):
         raise RuntimeError(f"Kunne ikke trene modell: {e}")
 
 
-def prediker_fremtid(df_siste, model, features, target_col, antall_dager, datokolonne="Dato"):
+def predict_feature_values(df, model, features, target_col, num_days, date_col="Dato"):
     """
     Genererer fremtidige prediksjoner basert på siste kjente rad i datasettet.
 
     Args:
-        df_siste (pd.DataFrame): Det historiske datasettet som modellen baseres på.
+        df (pd.DataFrame): Det historiske datasettet som modellen baseres på.
         model (obj): En trent modell med støtte for .predict().
         features (list of str): Liste over feature-kolonner som brukes til prediksjon.
         target_col (str): Navnet på kolonnen som skal predikeres.
-        antall_dager (int): Hvor mange dager frem i tid det skal predikeres.
-        datokolonne (str, optional): Navnet på datokolonnen. Standard er "Dato".
+        num_days (int): Hvor mange dager frem i tid det skal predikeres.
+        date_col (str, optional): Navnet på datokolonnen. Standard er "Dato".
 
     Returns:
         pd.DataFrame: En DataFrame med kolonnene:
             - "Dato": Fremtidige datoer
             - "predicted_<target_col>": Modellens predikerte verdier for hver dag
     """
-    siste_dato = pd.to_datetime(df_siste[datokolonne].max())
-    siste_rad = df_siste.iloc[-1]
+    try:
+        # Hent siste dato og siste rad for baselineverdier
+        last_date = pd.to_datetime(df[date_col].max())
+        last_col = df.iloc[-1]
 
-    fremtidige_datoer = [siste_dato + pd.Timedelta(days=i) for i in range(1, antall_dager + 1)]
-    base_data = {"Dato": fremtidige_datoer}
+        # Generer fremtidige datoer
+        future_dates = [last_date + pd.Timedelta(days=i) for i in range(1, num_days + 1)]
+        base_data = {date_col: future_dates}
 
-    sesong_features = {"måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"}
-    for f in features:
-        if f not in sesong_features and f in siste_rad:
-            base_data[f] = siste_rad[f]
-    df_fremtid = pd.DataFrame(base_data)
-    df_fremtid = legg_til_sesongvariabler(df_fremtid, datokolonne)        
+        # Kopier relevante verdier videre til fremtidsdata
+        seasonal_features = {"måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"}
+        for f in features:
+            if f not in seasonal_features and f in last_col:
+                base_data[f] = last_col[f]
 
-    X_fremtid = df_fremtid[features]
-    df_fremtid[f"predicted_{target_col}"] = model.predict(X_fremtid)
+        df_future = pd.DataFrame(base_data)
 
-    return df_fremtid[["Dato", f"predicted_{target_col}"]]
+        # Legg til sesongbaserte variabler
+        df_future = add_seasonal_features(df_future, date_col)
+
+        # Prediker
+        X_future = df_future[features]
+        df_future[f"predicted_{target_col}"] = model.predict(X_future)
+
+        return df_future[[date_col, f"predicted_{target_col}"]]
+
+    except Exception as e:
+        raise RuntimeError(f"Feil under fremtidsprediksjon: {e}")
 
 
-import plotly.graph_objects as go
-import pandas as pd
+
+
 
 def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, dekningsgrad=None):
     """
