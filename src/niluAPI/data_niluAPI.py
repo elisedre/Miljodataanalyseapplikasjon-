@@ -101,107 +101,20 @@ def get_raw_data_niluAPI():
 
     processed_data = process_raw_data(raw_data)
     save_to_json(processed_data, output_file)
-
-
-'''def fetch_raw_data_niluAPI(endpoint):
-    """
-    Henter rådata fra NILU API.
-
-    Args:
-        endpoint (str): API-endepunktet.
-
-    Returns:
-        list: Liste med data fra API-et, eller en tom liste hvis noe går galt.
-    """
     
-    # Henter data fra API
-    response = requests.get(endpoint)
-    if response.status_code != 200:
-        print(f"Feil ved henting av data: Status Code: {response.status_code}")
-        print("Response Text:", response.text)
-        return pd.DataFrame()
-    
-    data = response.json()
-    if not data:
-        print("Ingen data tilgjengelig for den angitte perioden")
-        return pd.DataFrame()
-    return data
-
-def process_and_save_raw_data(data, output_file):
-    """
-    Prosesserer rådata fra NILU API, setter det inn i en DataFrame og lagrer det som en JSON-fil.
-    Args:
-        data (list): Liste med rådata fra API-et.
-        raw_data_file (str): Filsti for lagring av rådata.
-    """
-   
-    # Prosesserer data for gruppering
-    målinger = [
-        {
-            "Dato": måling["dateTime"][:10],
-            "Komponent": stasjon["component"],
-            "Verdi": måling["value"],
-            "Dekningsgrad": måling.get("coverage", None)
-        }
-        for stasjon in data for måling in stasjon.get("values", [])
-        if "dateTime" in måling and "value" in måling
-    ]
-    
-    # Konverterer til DataFrame
-    df = pd.DataFrame(målinger)
-    
-    # Lager pivot tabell for gruppering av verdier
-    pivot_df = df.pivot_table(
-        index="Dato",
-        columns="Komponent",
-        values=["Verdi", "Dekningsgrad"],
-        aggfunc="mean"
-    ).reset_index()
-    
-    pivot_df.columns = [f"{col[0]}_{col[1]}" if col[1] else col[0] for col in pivot_df.columns]
-
-    pivot_df.to_json(output_file, orient="records", indent=4, force_ascii=False)
-    print(f"Gruppert data er lagret under {output_file}")
-
-
-
-def get_raw_data_niluAPI(): 
-    """ 
-    Spesiell funksjon for å hente ut rådata fra NILU API for Oslo og lagre
-    det i en JSON-fil.
-    Bruker de generelle funksjonene "fetch_raw_data_niluAPI" og "process_and_save_raw_data".
-
-    returns:
-        pd.DataFrame: DataFrame med rådata fra NILU API for Oslo.
-    """
-
-    base_url = "https://api.nilu.no/stats/day"
-    from_date = "2010-04-02"
-    to_date = "2016-12-31"
-    latitude = 59.9139
-    longitude = 10.7522
-    radius = 20
-    
-    # Bygger API-endepunktet
-    endpoint = f"{base_url}/{from_date}/{to_date}/{latitude}/{longitude}/{radius}"
-
-    output_file =  "../../data/raw_data/raw_air_quality_nilu_oslo.json"
-    raw_data= fetch_raw_data_niluAPI(endpoint)
-    processed_data = process_and_save_raw_data(raw_data, output_file)
-    return processed_data'''
-
 
 def remove_outliers(raw_data_file, cols, threshold=3):
     """
-    leser JSON-fil og finner outliers med mer enn 3 standardavvik fra gjennomsnittet.
-    fjerner outliers og setter dem til NaN.
+    Leser JSON-fil og finner outliers som ligger mer enn `threshold` standardavvik fra gjennomsnittet.
+    Fjerner outliers ved å sette dem til NaN.
 
     Args:
         raw_data_file (str): Filsti for rådata.
         cols (list): Liste over kolonnenavn som skal sjekkes for outliers.
+        threshold (int, optional): Antall standardavvik som definerer outlier (default 3).
 
     Returns:
-        pd.DataFrame: DataFrame med fjernet outliers, eller None hvis det oppstod en feil ved lesing.
+        pd.DataFrame: DataFrame med fjernet outliers (NaN), eller tom DataFrame ved feil.
     """
     try:
         pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
@@ -213,28 +126,30 @@ def remove_outliers(raw_data_file, cols, threshold=3):
     
     print("Fjerning av outliers:")
     print(f"Outliers er mer enn {x} standardavvik unna gjennomsnittet\n")
+    
     for col in cols:
         if col not in pivot_df.columns:
             print(f"Kolonnen '{col}' finnes ikke i dataene.")
             continue
 
+        # Beregn gjennomsnitt og standardavvik for kolonnen
         mean = pivot_df[col].mean()
         std = pivot_df[col].std()
         
-        # Finn outliers (mer enn 3 standardavvik unna gjennomsnittet)
+        # Finn rader som er outliers
         is_outlier = (pivot_df[col] > mean + x * std) | (pivot_df[col] < mean - x * std)
 
         outlier_count = is_outlier.sum()
         print(f"{col}:")
         print(f"Fjernet {outlier_count} outliers")
-        print(f"Standaravvik: {round(std,2)}")
+        print(f"Standardavvik: {round(std,2)}")
         print(f"Gjennomsnitt: {round(mean,2)}\n")
         
         # Sett outliers til NaN
         pivot_df.loc[is_outlier, col] = np.nan
 
-
     return pivot_df
+
 
 
 def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
