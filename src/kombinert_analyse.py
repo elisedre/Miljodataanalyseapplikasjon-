@@ -374,10 +374,43 @@ def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_future, target_col, c
 
     fig.show()
 
+def evaluate_and_train_model(df, target_col, features, model_object, test_size=0.2):
+    """
+    Trener og evaluerer en modell på gitt datasett og returnerer treningsdata, testdata og prediksjoner.
 
+    Args:
+        df (pd.DataFrame): Datasett med input- og målvariabler.
+        target_col (str): Navn på kolonnen som skal predikeres.
+        features (list of str): Liste over kolonnenavn som brukes som input.
+        model_object (obj): Modell som støtter fit() og predict().
+        test_size (float): Andel som skal brukes til test. Default er 0.2.
 
-def prediksjon_med_fremtidige_verdier(df, target_col, features, model_objekt,
-                                      antall_dager=365, test_size=0.2, dekningsgrad=None):
+    Returns:
+        tuple: (model, X_train, X_test, y_train, y_test, y_pred)
+    """
+    try:
+        X = df[features]
+        y = df[target_col]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, shuffle=False)
+
+        model = model_object.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        r2 = r2_score(y_test, y_pred)
+        mse = mean_squared_error(y_test, y_pred)
+
+        print(f"\n🔍 Evaluering av modellen '{model_object.__class__.__name__}' for '{target_col}':")
+        print(f"- R²-score: {r2:.4f}")
+        print(f"- MSE: {mse:.4f}")
+
+        return y_train, y_test, y_pred
+
+    except Exception as e:
+        raise RuntimeError(f"Feil under evaluering av modellen: {e}")
+
+def prediction_with_futurevalues(df, target_col, features, model_object,
+                                      num_days=365, test_size=0.2, coverage=None):
     """
     Trener og evaluerer en prediksjonsmodell, og bruker den til å forutsi fremtidige verdier.
 
@@ -385,11 +418,11 @@ def prediksjon_med_fremtidige_verdier(df, target_col, features, model_objekt,
         df (pd.DataFrame): Datasettet som inneholder datokolonne, inputvariabler og target.
         target_col (str): Navn på målvariabelen (kolonnen som skal predikeres).
         features (list of str): Liste over kolonnenavn som brukes som input (X).
-        model_objekt (obj): Et skalert/skalert modellobjekt med .fit() og .predict(), 
+        model_object (obj): Et skalert/skalert modellobjekt med .fit() og .predict(), 
                             f.eks. LinearRegression(), LGBMRegressor(), Pipeline(...)
-        antall_dager (int, optional): Hvor mange dager frem i tid det skal predikeres. Default er 365.
+        num_days (int, optional): Hvor mange dager frem i tid det skal predikeres. Default er 365.
         test_size (float, optional): Andel av data som skal brukes som testsett. Default er 0.2.
-        dekningsgrad (pd.Series, optional): En valgfri Series som markerer interpolerte/mangelfulle verdier 
+        coverage (pd.Series, optional): En valgfri Series som markerer interpolerte/mangelfulle verdier 
                                             (brukes til fargelegging i plottet).
 
     Returns:
@@ -399,40 +432,30 @@ def prediksjon_med_fremtidige_verdier(df, target_col, features, model_objekt,
     #Forbered data
     df = df.copy()
     df["Dato"] = pd.to_datetime(df["Dato"])
-    df = legg_til_sesongvariabler(df)
-    if isinstance(model_objekt, LGBMRegressor):
-        model_objekt.set_params(verbose=-1)
+    df = add_seasonal_features(df)
+
+    #fjerner overflødig informasjon fra LGBMRegressor
+    if isinstance(model_object, LGBMRegressor):
+        model_object.set_params(verbose=-1)
 
 
-    X = df[features]
-    y = df[target_col]
-
-    #Del opp i trenings- og testdata (behold rekkefølge)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, shuffle=False
+    y_train, y_test, y_pred = evaluate_and_train_model(
+        df=df,
+        target_col=target_col,
+        features=features,
+        model_object=model_object,
+        test_size=test_size
     )
 
-    #Tren på treningsdata
-    model = model_objekt.fit(X_train, y_train)
-
-    #Evaluer på testdata
-    y_pred = model.predict(X_test)
-    r2 = r2_score(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-
-    print(f"\n🔍 Evaluering av modellen '{model_objekt.__class__.__name__}'for '{target_col}' (på testdata):")
-    print(f"- R²-score: {r2:.4f}")
-    print(f"- MSE: {mse:.4f}")
-
     #Tren ny modell på hele datasettet for fremtidsprediksjon
-    model_full = clone(model_objekt) # kopi med samme innstillinger
-    model_full = tren_modell(df, target_col, features, model_full)
+    model_full = clone(model_object) # kopi med samme innstillinger
+    model_full = train_model(df, target_col, features, model_full)
 
     #Prediker fremtid
-    df_fremtid = prediker_fremtid(df, model_full, features, target_col, antall_dager)
+    df_fremtid = predict_feature_values(df, model_full, features, target_col, num_days)
 
     #Visualiser historikk + fremtid
-    plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, dekningsgrad)
+    plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, coverage)
 
 
 def vis_koeffisienter_linærmodell(df, features, target_cols, datokolonne="Dato"):
