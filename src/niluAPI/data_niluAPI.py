@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import numpy as np
 import json
-from sklearn.preprocessing import PowerTransformer
+from sklearn.preprocessing import PowerTransformer, StandardScaler
 import plotly.graph_objects as go
 
 
@@ -186,7 +186,6 @@ def clean_raw_data():
     Bruker de generelle funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
 
     """
-    
     raw_data_file =  "../../data/raw_data/raw_air_quality_nilu_oslo.json"
     clean_data_file = "../../data/clean_data/niluAPI_clean_data.json"
     cols= ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
@@ -199,9 +198,6 @@ def clean_raw_data():
     if pivot_df is not None:
         interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
 
-
-from sklearn.preprocessing import PowerTransformer, StandardScaler
-import pandas as pd
 
 def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
     """
