@@ -228,24 +228,26 @@ def clean_raw_data():
         print(f"Feil i renseprosessen: {e}")
 
 
-def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
+def analyse_and_fix_skewness(clean_data_file, threshold, cols=None):
     """
     Leser JSON-fil, analyserer og korrigerer skjevhet i dataene.
     Skjeve kolonner (>|threshold|) får Yeo-Johnson transformasjon og standardisering.
     Ikke-skjeve kolonner blir kun standardisert.
-    Transformerte verdier lagres i nye kolonner med '_Trans'-suffix.
+    Transformerte verdier legges til med '_Trans'-suffix.
 
     Args:
         clean_data_file (str): Filsti til ren data.
-        analyzed_data_file (str): Filsti for lagring av transformert data.
-        threshold (float): Grense for skjevhet.
+        threshold (float): Grenseverdi for skjevhet.
         cols (list): Kolonner som skal analyseres. Hvis None, velges alle numeriske.
+
+    Returns:
+        pd.DataFrame: DataFrame med transformerte verdier lagt til.
     """
     try:
         df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
         print(f"Feil ved lesing av fil: {e}")
-        return
+        return pd.DataFrame()
 
     df_transformed = df.copy()
     yeo = PowerTransformer(method='yeo-johnson')
@@ -265,7 +267,7 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
         new_col = f"{col}_Trans"
         try:
             if abs(skew) > threshold:
-                print(f" {col}: skjevhet {skew:.2f} → Yeo-Johnson + skalering")
+                print(f"{col}: skjevhet {skew:.2f} → Yeo-Johnson + skalering")
                 transformed = yeo.fit_transform(df[[col]])
                 scaled = scaler.fit_transform(transformed)
                 df_transformed[new_col] = scaled
@@ -281,31 +283,34 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
         new_col = f"{col}_Trans"
         if new_col in df_transformed.columns:
             print(f"→ {new_col}: {df_transformed[new_col].skew():.2f}")
-    
-    # Fjern de originale verdikolonene og behold kun de transformerte kolonnene
-    transformed_columns = [col for col in df_transformed.columns if "_Trans" in col]
 
-    # Velg kun de nødvendige kolonnene (dato, dekningsgrad, og de transformerte verdiene)
-    final_columns = ['Dato', 'Dekningsgrad_NO2', 'Dekningsgrad_O3', 'Dekningsgrad_SO2'] + transformed_columns
-    df_transformed = df_transformed[final_columns]
-
-    df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nTransformert data lagret i: {analyzed_data_file}")
     return df_transformed
 
-#Funskjon som skal nomalfordele skjevheten i dataene med yeo-johnson metoden
 def fix_skewness_data_niluAPI():
     """
-    Henter renset data fra NILU API, analyserer og fikser skjevhet i dataene.
-    Bruker den generelle funksjonen "analyse_and_fix_skewness".
+    Henter renset data fra NILU API, analyserer og fikser skjevhet i måleverdiene.
+    Lagrer kun relevante kolonner (transformerte verdier, dato og dekningsgrad).
     """
-    
     clean_data_file = "../../data/clean_data/niluAPI_clean_data.json"
-    analyze_data_file= "../../data/analyzed_data/niluAPI_analyzed_data.json"
+    analyzed_data_file = "../../data/analyzed_data/niluAPI_analyzed_data.json"
     threshold = 1.0
-    cols= ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
-    
-    analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols)
+    cols = ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
+
+    df_transformed = analyse_and_fix_skewness(clean_data_file, threshold, cols)
+    if df_transformed.empty:
+        print("Ingen data å lagre.")
+        return
+
+    # Velg kun de nødvendige kolonnene
+    transformed_columns = [f"{col}_Trans" for col in cols]
+    final_columns = ['Dato', 'Dekningsgrad_NO2', 'Dekningsgrad_O3', 'Dekningsgrad_SO2'] + transformed_columns
+    df_final = df_transformed[final_columns]
+
+    try:
+        df_final.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
+        print(f"\nTransformert data lagret i: {analyzed_data_file}")
+    except Exception as e:
+        print(f"Feil ved lagring av transformert data: {e}")
 
 
 
