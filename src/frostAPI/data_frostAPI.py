@@ -10,6 +10,8 @@ import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 
 
+
+
 def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     """
     Henter rådata fra Frost API.
@@ -195,49 +197,6 @@ def get_stations_frostAPI(client_id):
     endpoint = 'https://frost.met.no/sources/v0.jsonld'
     get_info_frostAPI(endpoint, parameters, client_id)
 
-
-def remove_outliers(raw_data_file, cols):
-    """
-    Leser JSON-fil og finner outliers med mer enn 3 standardavvik fra gjennomsnittet.
-    Fjerner outliers og setter dem til NaN.
-    
-    Args:
-        raw_data_file (str): Filsti for rådata.
-        cols (list): Liste over kolonnenavn som skal sjekkes for outliers.
-
-    Returns:
-        pd.DataFrame: DataFrame med outliers fjernet (som NaN).
-    """
-    try:
-        pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
-    except ValueError as e:
-        print(f"Feil ved lesing av rådata-fil: {e}")
-        return
-
-    x = 3  # antall standardavvik
-    print("Fjerning av outliers:")
-    print(f"Outliers er mer enn {x} standardavvik unna gjennomsnittet\n")
-
-    if "Dato" in pivot_df.columns:
-        pivot_df["Dato"] = pd.to_datetime(pivot_df["Dato"])
-
-    for col in cols:
-        mean = pivot_df[col].mean()
-        std = pivot_df[col].std()
-
-        is_outlier = (pivot_df[col] > mean + x * std) | (pivot_df[col] < mean - x * std)
-        outlier_count = is_outlier.sum()
-
-        print(f"{col}:")
-        print(f"Fjernet {outlier_count} outliers")
-        print(f"Standardavvik: {round(std, 2)}")
-        print(f"Gjennomsnitt: {round(mean, 2)}\n")
-
-        pivot_df.loc[is_outlier, col] = np.nan
-
-    return pivot_df
-
-
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
     Analyserer og plott outliers for gitte variabler i en DataFrame.
@@ -320,11 +279,13 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     print(f"\nGruppert data er lagret under {clean_data_file}")
 
 
-def clean_data_frostAPI():
+def clean_data_frostAPI(threshold=3):
     """
     Leser rådata fra Frost API, fjerner outliers og lagrer renset data i en JSON-fil.
-    Bruker de generelle funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
+    Bruker funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
 
+    Args:
+        threshold (float, optional): Antall standardavvik for å definere outliers. Default er 3.
     """
     
     raw_data_file = "../../data/raw_data/frostAPI_data.json"
@@ -333,15 +294,15 @@ def clean_data_frostAPI():
     from_date = "2010-04-02"
     to_date = "2016-12-31"
  
-    # Først fjern outliers fra rådataene
-    pivot_df = remove_outliers(raw_data_file, cols)
+    # Fjern outliers fra rådataene
+    from niluAPI.data_niluAPI import remove_outliers
+    pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
     
-    # Hvis dataen ble lest riktig, prosesser og lagre dataen
-    if pivot_df is not None:
+    # Sjekk om dataen ble lastet inn riktig og ikke er tom
+    if pivot_df is not None and not pivot_df.empty:
         interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
-
-import pandas as pd
-from sklearn.preprocessing import PowerTransformer, StandardScaler
+    else:
+        print("Data kunne ikke leses eller er tom. Avbryter prosesseringen.")
 
 
 def fix_skewness_data_frostAPI():
