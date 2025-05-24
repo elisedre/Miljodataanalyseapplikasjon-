@@ -12,8 +12,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.frostAPI.data_frostAPI import (
     fetch_data_from_frostAPI,
     fetch_weather_data_frostAPI,
-    #process_weather_data - får ikke til 
-    #remove_outliers_frost_data  - får ikke til 
     interpolate_and_save_clean_data,
     analyse_and_fix_skewness,
 )
@@ -32,7 +30,17 @@ class TestFrostAPIFunctions(unittest.TestCase):
 
             # Sjekker at funksjonen returnerer riktig data
             self.assertEqual(result, [{"mock": "value"}])
-    
+
+    def test_fetch_data_from_frostAPI_error(self):
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Not Found"
+        mock_response.json.return_value = {}
+
+        with patch("src.frostAPI.data_frostAPI.requests.get", return_value=mock_response):
+            result = fetch_data_from_frostAPI("test_endpoint", {}, "test_id")
+            self.assertEqual(result, []) 
+        
 
     def test_fetch_weather_data_frostAPI(self):
         # Bruker patch for å mocke fetch_data_from_frostAPI
@@ -93,7 +101,23 @@ class TestFrostAPIFunctions(unittest.TestCase):
         finally:   
             # Sletter filen etter testing
             os.remove(output_file)
+    def test_interpolation_when_no_missing_values(self):
+        df = pd.DataFrame({
+            "Dato": pd.date_range("2023-02-01", periods=3),
+            "Temperatur": [1.0, 2.0, 3.0]
+        })
+        output_file = "no_missing.json"
 
+        try:
+            interpolate_and_save_clean_data(df, output_file, "2023-02-01", "2023-02-03")
+            result = pd.read_json(output_file)
+
+            # Bekreft at ingen verdier var NaN
+            self.assertFalse(result["Temperatur"].isna().any())
+        finally:
+            if os.path.exists(output_file):
+                os.remove(output_file)
+    
 
     def test_analyse_and_fix_skewness(self):
          # Lager testdata med skjevhet 
@@ -121,7 +145,22 @@ class TestFrostAPIFunctions(unittest.TestCase):
             # Sletter filene etter testing
             os.remove(input_file)
             os.remove(output_file)
-            
+
+    def test_analyse_and_fix_skewness_empty_file(self):
+        input_file = "empty.json"
+        output_file = "transformed_empty.json"
+
+        try:
+            with open(input_file, "w", encoding="utf-8") as f:
+                json.dump([], f)  # Tom liste
+
+            result = analyse_and_fix_skewness(input_file, output_file, threshold=3)
+            self.assertIsNone(result)  # Skal returnere None
+
+        finally:
+            for f in [input_file, output_file]:
+                if os.path.exists(f):
+                    os.remove(f)      
 
 # Kjører testene 
 if __name__ == "__main__":
