@@ -110,7 +110,7 @@ class TestFrostAPIFunctions(unittest.TestCase):
             with open(input_file, "w", encoding="utf-8") as f:
                 json.dump(test_data, f)
             
-            result = analyse_and_fix_skewness(input_file, output_file)
+            result = analyse_and_fix_skewness(input_file, output_file, threshold=3)
             # Lager en DataFrame med opprinnelige verider som skal sammenlignes med resultatet
             original_df = pd.DataFrame(test_data)
 
