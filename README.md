@@ -32,8 +32,8 @@ Start med [Prosjekt Frost API](../notebooks/frostAPI/frostAPI.ipynb) og følg de
 
 ## ✅ Forutsetninger for gjennomkjøring
 - Python (?) eller nyere 
-- Installerte pakker eller venv??
-- Tilgang til internett for API-kall??
+- Installerte pakker eller venv?
+- Tilgang til internett for API-kall?
 - Mer?
 
 ## 💾 Installasjon av prosjektet
