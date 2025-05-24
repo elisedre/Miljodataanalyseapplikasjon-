@@ -93,7 +93,21 @@ class TestFrostAPIFunctions(unittest.TestCase):
         result = process_weather_data(raw_data, elements)
         self.assertEqual(result, [{"Dato": "2023-02-01", "Stasjon": "SN12345", "Temperatur": 2.5, "Vind": 5.0}])
 
+    def test_save_data_as_json(self):
+        from src.frostAPI.data_frostAPI import save_data_as_json
 
+        data = [{"Dato": "2023-02-01", "Temperatur": 2.0}]
+        output_file = "saved_file.json"
+
+        try:
+            save_data_as_json(data, output_file, index_columns=["Dato"], value_columns=["Temperatur"])
+            with open(output_file, "r", encoding="utf-8") as f:
+                content = json.load(f)
+            self.assertEqual(content[0]["Temperatur"], 2.0)
+        finally:
+            if os.path.exists(output_file):
+                os.remove(output_file)
+                
     def test_interpolate_and_save_clean_data(self):
         # Lager testdata
         df = pd.DataFrame({
