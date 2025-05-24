@@ -118,7 +118,27 @@ class TestFrostAPIFunctions(unittest.TestCase):
             if os.path.exists(output_file):
                 os.remove(output_file)
     
+    def test_interpolation_flags_added(self):
+        df = pd.DataFrame({
+            "Dato": ["2023-02-01", "2023-02-03"],
+            "Temperatur": [1.0, 3.0]
+        })
+        df["Dato"] = pd.to_datetime(df["Dato"])
+        output_file = "flagged.json"
 
+        try:
+            interpolate_and_save_clean_data(df, output_file, "2023-02-01", "2023-02-03")
+            result = pd.read_json(output_file)
+
+            # Sjekk at interpolert kolonne finnes og flagges riktig
+            self.assertIn("Interpolert_Temperatur", result.columns)
+            is_interpolated = result.loc[result["Dato"] == "2023-02-02", "Interpolert_Temperatur"].iloc[0]
+            self.assertTrue(is_interpolated)
+
+        finally:
+            if os.path.exists(output_file):
+                os.remove(output_file)
+                
     def test_analyse_and_fix_skewness(self):
          # Lager testdata med skjevhet 
          test_data = [
