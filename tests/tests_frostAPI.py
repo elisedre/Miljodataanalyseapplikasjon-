@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.frostAPI.data_frostAPI import (
     fetch_data_from_frostAPI,
+    process_weather_data,
     fetch_weather_data_frostAPI,
     interpolate_and_save_clean_data,
     analyse_and_fix_skewness,
@@ -73,6 +74,24 @@ class TestFrostAPIFunctions(unittest.TestCase):
 
             # Sletter testfilen etter testing
             os.remove("test_file")  
+    def test_process_weather_data(self):
+        
+
+        raw_data = [{
+            "referenceTime": "2023-02-01T00:00:00Z",
+            "sourceId": "SN12345",
+            "observations": [
+                {"elementId": "air_temperature", "value": 2.5},
+                {"elementId": "wind_speed", "value": 5.0}
+            ]
+        }]
+        elements = {
+            "air_temperature": "Temperatur",
+            "wind_speed": "Vind"
+        }
+
+        result = process_weather_data(raw_data, elements)
+        self.assertEqual(result, [{"Dato": "2023-02-01", "Stasjon": "SN12345", "Temperatur": 2.5, "Vind": 5.0}])
 
 
     def test_interpolate_and_save_clean_data(self):
@@ -138,7 +157,7 @@ class TestFrostAPIFunctions(unittest.TestCase):
         finally:
             if os.path.exists(output_file):
                 os.remove(output_file)
-                
+
     def test_analyse_and_fix_skewness(self):
          # Lager testdata med skjevhet 
          test_data = [
@@ -175,7 +194,7 @@ class TestFrostAPIFunctions(unittest.TestCase):
                 json.dump([], f)  # Tom liste
 
             result = analyse_and_fix_skewness(input_file, output_file, threshold=3)
-            self.assertIsNone(result)  # Skal returnere None
+            self.assertTrue(result.empty)  
 
         finally:
             for f in [input_file, output_file]:
