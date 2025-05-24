@@ -8,6 +8,10 @@ Prosjektet er en besvarelse på årets eksamensoppgave i **TDT4114 Anvendt progr
 - Gjennomføre analyse gjennom utforskning av trender og undersøkelser av sammenhenger. 
 - Visualisere data for bedre innsikt
 
+## 🗂️ Mappestruktur
+
+**Legger til mappestrukturen her når prosjektet er ferdigstilt**
+
 ## ▶️ Gjennomkjøring av prosjektet
 Prosjektet er strukturert slik at hovedarbeidet utføres i Jupyter Notebooks:
 - [Prosjekt Frost API](../notebooks/frostAPI/frostAPI.ipynb)
