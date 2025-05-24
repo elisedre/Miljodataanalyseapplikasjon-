@@ -11,7 +11,6 @@ from sklearn.preprocessing import PowerTransformer, StandardScaler
 
 
 
-
 def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     """
     Henter rådata fra Frost API.
@@ -89,47 +88,15 @@ def save_data_as_json(data, file, index_columns, value_columns, aggfunc="mean"):
     print(f"Gruppert data er lagret under {file}")
 
 
-def fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements):
-    """
-    Hovedfunksjon for å hente, prosessere og lagre værdata fra Frost API.
-
-    Args:
-        endpoint (str): API-endepunktet.
-        parameters (dict): Parametere for API-kallet.
-        file (str): Filsti for lagring av data.
-        client_id (str): Client ID for autentisering.
-        elements (dict): Mapping av elementId til kolonnenavn.
-
-    Returns:
-        list: Liste med prosesserte værdata, eller None hvis ingen data ble hentet.  
-    """
-    
-    raw_data = fetch_data_from_frostAPI(endpoint, parameters, client_id)
-    if not raw_data:
-        print("Ingen data hentet.")
-        return
-    
-    processed_data = process_weather_data(raw_data, elements)
-
-    save_data_as_json(
-        data=processed_data,
-        file=file,
-        index_columns=["Dato"],  
-        value_columns=list(elements.values()),  
-        aggfunc="mean"  
-    )
-
-    return processed_data 
-
 def data_frostAPI(client_id):
     """
-    Henter data fra Frost API ved hjelp av en klient-ID.
+    Henter, prosesserer og lagrer værdata fra Frost API.
 
     Argumenter:
-    - client_id (str): En streng som representerer klient-ID-en som brukes for autentisering mot Frost API.
+        client_id (str): En streng som representerer klient-ID-en som brukes for autentisering mot Frost API.
 
-    Returns:
-    - dict: Data hentet fra Frost API i JSON-format.
+    Returnerer:
+        list: Liste med prosesserte værdata, eller None hvis ingen data ble hentet.
     """
 
     endpoint = "https://frost.met.no/observations/v0.jsonld"
@@ -146,7 +113,22 @@ def data_frostAPI(client_id):
         "mean(wind_speed P1D)": "Vindhastighet"
     }
 
-    fetch_weather_data_frostAPI(endpoint, parameters, file, client_id, elements)
+    raw_data = fetch_data_from_frostAPI(endpoint, parameters, client_id)
+    if not raw_data:
+        print("Ingen data hentet.")
+        return
+
+    processed_data = process_weather_data(raw_data, elements)
+
+    save_data_as_json(
+        data=processed_data,
+        file=file,
+        index_columns=["Dato"],
+        value_columns=list(elements.values()),
+        aggfunc="mean"
+    )
+
+    return processed_data
 
 
 def get_info_frostAPI(endpoint, parameters, client_id):
