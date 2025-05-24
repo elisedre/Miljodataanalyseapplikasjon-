@@ -86,6 +86,15 @@ class TestProcessingFunctions(unittest.TestCase):
         finally:
             if os.path.exists(file):
                 os.remove(file)
+    def test_process_weather_data_empty_observations(self):
+        raw_data = [{
+            "referenceTime": "2023-02-01T00:00:00Z",
+            "sourceId": "SN12345",
+            "observations": []
+        }]
+        elements = {"air_temperature": "Temperatur"}
+        result = process_weather_data(raw_data, elements)
+        self.assertEqual(result, [{"Dato": "2023-02-01", "Stasjon": "SN12345"}])
 
 # Rensing av data
 class TestCleaningFunctions(unittest.TestCase):
