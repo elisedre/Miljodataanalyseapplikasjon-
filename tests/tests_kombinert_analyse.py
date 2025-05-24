@@ -66,7 +66,15 @@ class TestFetchFunctions(unittest.TestCase):
         df = pd.DataFrame(columns=["x", "y"])
         with self.assertRaises(ValueError):
             tren_modell(df, "y", ["x"], LinearRegression())
-    
+
+    def test_legg_til_sesongvariabler(self):
+        df = pd.DataFrame({"Dato": ["2023-01-01", "2023-06-01"]})
+        result = legg_til_sesongvariabler(df)
+        self.assertIn("måned", result.columns)
+        self.assertIn("sin_dag", result.columns)
+        self.assertEqual(result.loc[0, "måned"], 1)
+        self.assertEqual(result.loc[1, "måned"], 6)
+        
     
     def test_prediker_fremtid(self):
         df = pd.DataFrame({
