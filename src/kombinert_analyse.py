@@ -225,7 +225,7 @@ def add_seasonal_features(df, date_col="Dato"):
     except Exception as e:
         raise Exception(f"Feil ved behandling av sesongvariabler: {str(e)}") from e
 
-def tren_modell(df, target_col, features, modell_objekt):
+def train_model(df, target_col, features, model_object):
     """
     Trener en prediksjonsmodell basert på utvalgte inputvariabler og målvariabel.
 
@@ -233,16 +233,19 @@ def tren_modell(df, target_col, features, modell_objekt):
         df (pd.DataFrame): Datasettet som inneholder input- og målvariabler.
         target_col (str): Navnet på kolonnen som skal brukes som målvariabel (y).
         features (list of str): Liste over kolonner som skal brukes som input (X).
-        modell_objekt (obj): Et modellobjekt som implementerer .fit(X, y),
+        model_object (obj): Et modellobjekt som implementerer .fit(X, y),
                              f.eks. LinearRegression(), LGBMRegressor().
 
     Returns:
-        modell_objekt: Den trenede modellen, klar for prediksjon med .predict().
+        model_object: Den trenede modellen, klar for prediksjon med .predict().
     """
-    X = df[features]
-    y = df[target_col]
-    modell_objekt.fit(X, y)
-    return modell_objekt
+    try:
+        X = df[features]
+        y = df[target_col]
+        model_object.fit(X, y)
+        return model_object
+    except Exception as e:
+        raise RuntimeError(f"Kunne ikke trene modell: {e}")
 
 
 def prediker_fremtid(df_siste, model, features, target_col, antall_dager, datokolonne="Dato"):
