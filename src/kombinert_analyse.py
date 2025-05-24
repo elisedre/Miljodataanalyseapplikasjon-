@@ -297,22 +297,29 @@ def predict_feature_values(df, model, features, target_col, num_days, date_col="
 
 
 
-
-def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, dekningsgrad=None):
+def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_future, target_col, coverage=None):
     """
-    Interaktiv graf som viser treningsdata, testdata (faktisk og predikert), og fremtidige prediksjoner.
+    Lager en interaktiv visualisering av treningsdata, testdata og fremtidige prediksjoner.
 
     Args:
         y_train (pd.Series): Faktiske verdier som modellen ble trent på.
-        y_test (pd.Series): Faktiske verdier brukt for testing av modellen.
+        y_test (pd.Series): Faktiske verdier brukt for testing.
         y_pred (array-like): Modellens prediksjoner på testsettet.
-        df_fremtid (pd.DataFrame): DataFrame med fremtidige prediksjoner.
-                                   Må inneholde kolonnen "predicted_<target_col>".
-        target_col (str): Navnet på målvariabelen (target) som visualiseres.
-        dekningsgrad (pd.Series, optional): Serie med dekningsgrad.
+        df_future (pd.DataFrame): DataFrame med fremtidige prediksjoner.
+                                  Må inneholde kolonnen "predicted_<target_col>".
+        target_col (str): Navn på målvariabelen som skal vises i grafen.
+        coverage (pd.Series, optional): Valgfri Series med dekningsgrad (f.eks. 0–100%).
+
+    Return:
+        Viser et interaktivt plot i nettleser / notebook med historiske og fremtidige verdier.
     """
 
-    forecast = df_fremtid[f"predicted_{target_col}"].values
+    try:
+        forecast = df_future[f"predicted_{target_col}"].values
+    except KeyError:
+        raise KeyError(f"Kolonnen 'predicted_{target_col}' finnes ikke i df_future.")
+
+    # Definer x-verdier for de tre segmentene (historisk, test, fremtid)
     total_len = len(y_train) + len(y_test) + len(forecast)
     x_train = list(range(0, len(y_train)))
     x_test = list(range(len(y_train), len(y_train) + len(y_test)))
@@ -320,21 +327,41 @@ def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, 
 
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=x_train, y=y_train, mode='lines', name='Treningsdata', line=dict(color='#FF69B4')))
-    fig.add_trace(go.Scatter(x=x_test, y=y_test, mode='lines', name='Testdata (ekte)', line=dict(color='red')))
-    fig.add_trace(go.Scatter(x=x_test, y=y_pred, mode='lines', name='Testdata (modell)', line=dict(color='orange', dash='dash')))
-    fig.add_trace(go.Scatter(x=x_fut, y=forecast, mode='lines', name='Fremtidig prediksjon', line=dict(color='blue', dash='dot')))
+    # Treningsdata
+    fig.add_trace(go.Scatter(
+        x=x_train, y=y_train, mode='lines', name='Treningsdata', line=dict(color='#FF69B4')
+    ))
 
-    if dekningsgrad is not None:
-        dekningsgrad = dekningsgrad.reset_index(drop=True)
-        for idx, val in enumerate(dekningsgrad[:total_len]):
+    # Testdata (faktiske verdier)
+    fig.add_trace(go.Scatter(
+        x=x_test, y=y_test, mode='lines', name='Testdata (ekte)', line=dict(color='red')
+    ))
+
+    # Testdata (modellens prediksjoner)
+    fig.add_trace(go.Scatter(
+        x=x_test, y=y_pred, mode='lines', name='Testdata (modell)', line=dict(color='orange', dash='dash')
+    ))
+
+    # Fremtidige prediksjoner
+    fig.add_trace(go.Scatter(
+        x=x_fut, y=forecast, mode='lines', name='Fremtidig prediksjon', line=dict(color='blue', dash='dot')
+    ))
+
+    # Valgfri fargelegging basert på dekningsgrad
+    if coverage is not None:
+        coverage = coverage.reset_index(drop=True)
+        for idx, val in enumerate(coverage[:total_len]):
             if val == 0.0:
-                fig.add_vrect(x0=idx-0.5, x1=idx+0.5, fillcolor="darkgray", opacity=0.4, line_width=0)
+                fig.add_vrect(x0=idx - 0.5, x1=idx + 0.5, fillcolor="darkgray", opacity=0.4, line_width=0)
             elif 0.0 < val < 100.0:
-                fig.add_vrect(x0=idx-0.5, x1=idx+0.5, fillcolor="lightgreen", opacity=0.4, line_width=0)
+                fig.add_vrect(x0=idx - 0.5, x1=idx + 0.5, fillcolor="lightgreen", opacity=0.4, line_width=0)
 
-    fig.add_vline(x=len(y_train) + len(y_test) - 1, line=dict(color='gray', dash='dash'))
+    # Visuell skillelinje mellom test og fremtid
+    fig.add_vline(
+        x=len(y_train) + len(y_test) - 1, line=dict(color='gray', dash='dash')
+    )
 
+    # Oppsett av layout og aksene
     fig.update_layout(
         title=f"{target_col} – Historikk, test og fremtid",
         xaxis_title="Tidsindeks",
@@ -346,6 +373,7 @@ def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, 
     )
 
     fig.show()
+
 
 
 def prediksjon_med_fremtidige_verdier(df, target_col, features, model_objekt,
