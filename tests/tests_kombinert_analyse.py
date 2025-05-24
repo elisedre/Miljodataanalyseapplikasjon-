@@ -19,6 +19,7 @@ from src.kombinert_analyse import (
 
 class TestKombinereDF(unittest.TestCase):
     def test_kombinere_df_success(self):
+        # Tester at to JSON-filer kan kombineres korrekt på 'Dato'
         data1 = [{"Dato": "2023-01-01", "A": 1}]
         data2 = [{"Dato": "2023-01-01", "B": 10}]
         with open("f1.json", "w", encoding="utf-8") as f:
@@ -35,10 +36,12 @@ class TestKombinereDF(unittest.TestCase):
         os.remove("f2.json")
 
     def test_kombinere_df_missing_file(self):
+        # Forventer FileNotFoundError hvis filene mangler
         with self.assertRaises(FileNotFoundError):
             kombinere_df("missing1.json", "missing2.json", "Dato")
 
     def test_kombinere_df_invalid_key(self):
+        # Forventer KeyError ved feil kolonnenavn for join
         data1 = [{"Dato": "2023-01-01", "A": 1}]
         data2 = [{"Dato": "2023-01-01", "B": 10}]
         with open("f1.json", "w", encoding="utf-8") as f:
@@ -55,16 +58,19 @@ class TestKombinereDF(unittest.TestCase):
 
 class TestTrenModell(unittest.TestCase):
     def test_tren_modell_success(self):
+        # Tester at modellen lærer korrekt sammenheng (y = 2x)
         df = pd.DataFrame({"x": [1, 2, 3], "y": [2, 4, 6]})
         model = tren_modell(df, "y", ["x"], LinearRegression())
         self.assertAlmostEqual(model.coef_[0], 2.0)
 
     def test_tren_modell_missing_column(self):
+        # Forventer KeyError når target-kolonnen mangler
         df = pd.DataFrame({"x": [1, 2, 3]})
         with self.assertRaises(KeyError):
             tren_modell(df, "y", ["x"], LinearRegression())
 
     def test_tren_modell_empty_df(self):
+        # Forventer ValueError når datasettet er tomt
         df = pd.DataFrame(columns=["x", "y"])
         with self.assertRaises(ValueError):
             tren_modell(df, "y", ["x"], LinearRegression())
@@ -72,6 +78,7 @@ class TestTrenModell(unittest.TestCase):
 
 class TestLeggTilSesongvariabler(unittest.TestCase):
     def test_legg_til_sesongvariabler(self):
+        # Tester at sesongbaserte variabler blir lagt til korrekt
         df = pd.DataFrame({"Dato": ["2023-01-01", "2023-06-01"]})
         result = legg_til_sesongvariabler(df)
         self.assertIn("måned", result.columns)
@@ -82,6 +89,7 @@ class TestLeggTilSesongvariabler(unittest.TestCase):
 
 class TestPredikerFremtid(unittest.TestCase):
     def test_prediker_fremtid_success(self):
+        # Tester at funksjonen genererer fremtidige prediksjoner korrekt
         df = pd.DataFrame({
             "Dato": pd.date_range("2023-01-01", periods=5),
             "x": [1, 2, 3, 4, 5],
@@ -94,6 +102,7 @@ class TestPredikerFremtid(unittest.TestCase):
         self.assertIn("predicted_y", future.columns)
 
     def test_prediker_fremtid_invalid_feature(self):
+        # Forventer KeyError ved bruk av ikke-eksisterende feature
         df = pd.DataFrame({
             "Dato": pd.date_range("2023-01-01", periods=5),
             "x": [1, 2, 3, 4, 5],
