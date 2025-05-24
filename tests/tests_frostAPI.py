@@ -87,6 +87,7 @@ class TestProcessingFunctions(unittest.TestCase):
             if os.path.exists(file):
                 os.remove(file)
     def test_process_weather_data_empty_observations(self):
+        # Tester at process_weather_data håndterer tom observations-liste korrekt
         raw_data = [{
             "referenceTime": "2023-02-01T00:00:00Z",
             "sourceId": "SN12345",
