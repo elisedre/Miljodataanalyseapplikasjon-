@@ -94,7 +94,7 @@ def get_raw_data_niluAPI():
     return processed_data
 
 
-def remove_outliers(raw_data_file, cols):
+def remove_outliers(raw_data_file, cols, threshold=3):
     """
     leser JSON-fil og finner outliers med mer enn 3 standardavvik fra gjennomsnittet.
     fjerner outliers og setter dem til NaN.
@@ -110,12 +110,17 @@ def remove_outliers(raw_data_file, cols):
         pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
         print(f"Feil ved lesing av rådata-fil: {e}")
-        return
-    x=3
+        return pd.DataFrame()
+    
+    x = threshold
     
     print("Fjerning av outliers:")
     print(f"Outliers er mer enn {x} standardavvik unna gjennomsnittet\n")
     for col in cols:
+        if col not in pivot_df.columns:
+            print(f"Kolonnen '{col}' finnes ikke i dataene.")
+            continue
+
         mean = pivot_df[col].mean()
         std = pivot_df[col].std()
         
@@ -189,7 +194,7 @@ def clean_raw_data():
     to_date = "2016-12-31"
  
     # Først fjern outliers fra rådataene
-    pivot_df = remove_outliers(raw_data_file, cols)
+    pivot_df = remove_outliers(raw_data_file, cols, threshold=3)
     # Hvis dataen ble lest riktig, prosesser og lagre dataen
     if pivot_df is not None:
         interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
