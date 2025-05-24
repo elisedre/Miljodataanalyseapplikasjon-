@@ -12,7 +12,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.frostAPI.data_frostAPI import (
     fetch_data_from_frostAPI,
     process_weather_data,
+    save_data_as_json,
     fetch_weather_data_frostAPI,
+    remove_outliers,
     interpolate_and_save_clean_data,
     analyse_and_fix_skewness,
 )
@@ -94,7 +96,6 @@ class TestFrostAPIFunctions(unittest.TestCase):
         self.assertEqual(result, [{"Dato": "2023-02-01", "Stasjon": "SN12345", "Temperatur": 2.5, "Vind": 5.0}])
 
     def test_save_data_as_json(self):
-        from src.frostAPI.data_frostAPI import save_data_as_json
 
         data = [{"Dato": "2023-02-01", "Temperatur": 2.0}]
         output_file = "saved_file.json"
@@ -107,7 +108,22 @@ class TestFrostAPIFunctions(unittest.TestCase):
         finally:
             if os.path.exists(output_file):
                 os.remove(output_file)
-                
+
+    def test_remove_outliers(self):
+
+        test_data = [{"Dato": f"2023-02-{i:02d}", "Temperatur": 10.0} for i in range(1, 6)]
+        test_data.append({"Dato": "2023-02-06", "Temperatur": 999})  # outlier
+
+        input_file = "outliers_test.json"
+        with open(input_file, "w", encoding="utf-8") as f:
+            json.dump(test_data, f)
+
+        try:
+            df = remove_outliers(input_file, ["Temperatur"])
+            self.assertTrue(np.isnan(df.loc[df["Dato"] == "2023-02-06", "Temperatur"]).all())
+        finally:
+            os.remove(input_file)
+
     def test_interpolate_and_save_clean_data(self):
         # Lager testdata
         df = pd.DataFrame({
