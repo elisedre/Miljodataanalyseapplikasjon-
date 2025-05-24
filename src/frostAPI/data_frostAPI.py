@@ -127,8 +127,6 @@ def data_frostAPI(client_id):
         aggfunc="mean"
     )
 
-    return processed_data
-
 
 def get_info_frostAPI(endpoint, parameters, client_id):
     """
