@@ -182,13 +182,13 @@ def combine_df(file1_path, file2_path, combining_point):
         print(f"Feil: {e}")
         return None
 
-def legg_til_sesongvariabler(df, datokolonne="Dato"):
+def add_seasonal_features(df, date_col="Dato"):
     """
     Legger til sesongbaserte variabler i datasettet basert på en datokolonne.
 
     Args:
         df (pd.DataFrame): Datasettet som inneholder en datokolonne.
-        datokolonne (str, optional): Navnet på kolonnen som inneholder datoer. 
+        date_col (str, optional): Navnet på kolonnen som inneholder datoer. 
                                      Standard er "Dato".
 
     Returns:
@@ -198,15 +198,32 @@ def legg_til_sesongvariabler(df, datokolonne="Dato"):
             - "dag_i_året": Dagnummer i året (1–365)
             - "sin_dag": Sinus av dag_i_året (for å modellere sesonger)
             - "cos_dag": Cosinus av dag_i_året (for å modellere sesonger)
+    Raises:
+        KeyError: Hvis datokolonnen ikke finnes i datasettet.
+        Exception: Ved feil i dato-konvertering eller beregning.
     """
-    df = df.copy()
-    df[datokolonne] = pd.to_datetime(df[datokolonne])
-    df["måned"] = df[datokolonne].dt.month
-    df["ukedag"] = df[datokolonne].dt.weekday
-    df["dag_i_året"] = df[datokolonne].dt.dayofyear
-    df["sin_dag"] = np.sin(2 * np.pi * df["dag_i_året"] / 365)
-    df["cos_dag"] = np.cos(2 * np.pi * df["dag_i_året"] / 365)
-    return df
+    try:
+        df = df.copy()
+
+        # Konverter kolonnen til datetime-format
+        df[date_col] = pd.to_datetime(df[date_col])
+
+        # Legg til sesongbaserte variabler
+        df["måned"] = df[date_col].dt.month
+        df["ukedag"] = df[date_col].dt.weekday
+        df["dag_i_året"] = df[date_col].dt.dayofyear
+
+        # Sinus og cosinus brukes til å modellere sesongmessige mønstre
+        df["sin_dag"] = np.sin(2 * np.pi * df["dag_i_året"] / 365)
+        df["cos_dag"] = np.cos(2 * np.pi * df["dag_i_året"] / 365)
+
+        return df
+
+    except KeyError as e:
+        raise KeyError(f"Kolonnen '{date_col}' finnes ikke i datasettet.") from e
+
+    except Exception as e:
+        raise Exception(f"Feil ved behandling av sesongvariabler: {str(e)}") from e
 
 def tren_modell(df, target_col, features, modell_objekt):
     """
