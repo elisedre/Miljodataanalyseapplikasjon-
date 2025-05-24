@@ -101,7 +101,7 @@ def get_raw_data_niluAPI():
 
     processed_data = process_raw_data(raw_data)
     save_to_json(processed_data, output_file)
-    
+
 
 def remove_outliers(raw_data_file, cols, threshold=3):
     """
@@ -150,65 +150,82 @@ def remove_outliers(raw_data_file, cols, threshold=3):
 
     return pivot_df
 
-
-
-def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
+def interpolate_data(pivot_df, from_date, to_date):
     """
-    Setter verdiene som mangler målinger fra til NaN, og interpolerer alle NaN-verdier med linær metode.
-    Markerer hvilke verdier som ble interpolert med true. 
-    Lagre den rensede dataen som en JSON-fil.
+    Interpolerer manglende verdier i en DataFrame for et gitt datointervall.
+    Marker interpolerte verdier ved å sette tilhørende dekningsgrad til False.
 
     Args:
-        pivot_df (pd.DataFrame): DataFrame med værdata med fjernet outliers.
-        clean_data_file (str): Filsti for lagring av renset data.
-        from_date (str): Startdato for interpolering i formatet 'YYYY-MM-DD'.
-        to_date (str): Sluttdato for interpolering i formatet 'YYYY-MM-DD'.
+        pivot_df (pd.DataFrame): DataFrame med rådata med outliers fjernet.
+        from_date (str): Startdato for interpolering i format 'YYYY-MM-DD'.
+        to_date (str): Sluttdato for interpolering i format 'YYYY-MM-DD'.
 
+    Returns:
+        pd.DataFrame: DataFrame med interpolerte verdier.
     """
-
     all_dates = pd.date_range(start=from_date, end=to_date).strftime('%Y-%m-%d')
 
-    # Setter opp alle datoer og fyller manglende verdier med NaN
+    # Setter dato som indeks og fyller inn manglende datoer med NaN
     pivot_df.set_index("Dato", inplace=True)
     pivot_df = pivot_df.reindex(all_dates).reset_index()
     pivot_df = pivot_df.rename(columns={'index': 'Dato'})
 
-    print("\nInterpolering av Nan-verdier:")
-    # Interpolerer verdier for manglende data
+    print("\nInterpolering av NaN-verdier:")
     for col in pivot_df.columns:
         if "Verdi" in col:
             null_values = pivot_df[col].isna().sum()
             pivot_df[col] = pivot_df[col].interpolate(method='linear')
-            
             print(f"{col}: {null_values} verdier ble interpolert")
-            
+
     # Setter Dekningsgrad til False hvis verdien er interpolert
     for col in pivot_df.columns:
         if "Dekningsgrad" in col:
             pivot_df[col] = pivot_df[col].fillna(False)
-        
-        
-    # Lagre pivotert data som JSON
-    pivot_df.to_json(clean_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nGruppert data er lagret under {clean_data_file}")
+
+    return pivot_df
+
+
+def save_clean_data(df, clean_data_file):
+    """
+    Lagrer en DataFrame som en JSON-fil.
+
+    Args:
+        df (pd.DataFrame): DataFrame som skal lagres.
+        clean_data_file (str): Filsti for lagring av data.
+
+    Returns:
+        None
+    """
+    try:
+        df.to_json(clean_data_file, orient="records", indent=4, force_ascii=False)
+        print(f"\nRenset data er lagret under {clean_data_file}")
+    except Exception as e:
+        print(f"Feil ved lagring av fil: {e}")
 
 def clean_raw_data():
     """
-    Henter rådata fra NILU API, fjerner outliers og lagrer renset data i en JSON-fil.
-    Bruker de generelle funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
-
+    Henter rådata fra NILU API, fjerner outliers og interpolerer manglende verdier.
+    Lagrer deretter renset data i en JSON-fil.
     """
-    raw_data_file =  "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    raw_data_file = "../../data/raw_data/raw_air_quality_nilu_oslo.json"
     clean_data_file = "../../data/clean_data/niluAPI_clean_data.json"
-    cols= ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
+    cols = ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
     from_date = "2010-04-02"
     to_date = "2016-12-31"
- 
-    # Først fjern outliers fra rådataene
-    pivot_df = remove_outliers(raw_data_file, cols, threshold=3)
-    # Hvis dataen ble lest riktig, prosesser og lagre dataen
-    if pivot_df is not None:
-        interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
+
+    try:
+        # Fjerner outliers
+        pivot_df = remove_outliers(raw_data_file, cols, threshold=3)
+        if pivot_df.empty:
+            print("Ingen data tilgjengelig etter outlier-fjerning.")
+            return
+
+        # Interpolerer og lagrer renset data
+        interpolated_df = interpolate_data(pivot_df, from_date, to_date)
+        save_clean_data(interpolated_df, clean_data_file)
+
+    except Exception as e:
+        print(f"Feil i renseprosessen: {e}")
 
 
 def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
