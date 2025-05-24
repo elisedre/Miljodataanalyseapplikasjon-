@@ -9,8 +9,10 @@ import plotly.graph_objects as go
 def fetch_raw_data_niluAPI(endpoint):
     """
     Henter rådata fra NILU API.
+
     Args:
         endpoint (str): API-endepunktet.
+
     Returns:
         list: Liste med data fra API-et, eller en tom liste hvis noe går galt.
     """
@@ -71,6 +73,9 @@ def get_raw_data_niluAPI():
     Spesiell funksjon for å hente ut rådata fra NILU API for Oslo og lagre
     det i en JSON-fil.
     Bruker de generelle funksjonene "fetch_raw_data_niluAPI" og "process_and_save_raw_data".
+
+    returns:
+        pd.DataFrame: DataFrame med rådata fra NILU API for Oslo.
     """
 
     base_url = "https://api.nilu.no/stats/day"
@@ -93,9 +98,13 @@ def remove_outliers(raw_data_file, cols):
     """
     leser JSON-fil og finner outliers med mer enn 3 standardavvik fra gjennomsnittet.
     fjerner outliers og setter dem til NaN.
+
     Args:
         raw_data_file (str): Filsti for rådata.
         cols (list): Liste over kolonnenavn som skal sjekkes for outliers.
+
+    Returns:
+        pd.DataFrame: DataFrame med fjernet outliers, eller None hvis det oppstod en feil ved lesing.
     """
     try:
         pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
@@ -131,6 +140,7 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     Setter verdiene som mangler målinger fra til NaN, og interpolerer alle NaN-verdier med linær metode.
     Markerer hvilke verdier som ble interpolert med true. 
     Lagre den rensede dataen som en JSON-fil.
+
     Args:
         pivot_df (pd.DataFrame): DataFrame med værdata med fjernet outliers.
         clean_data_file (str): Filsti for lagring av renset data.
@@ -169,6 +179,7 @@ def clean_raw_data():
     """
     Henter rådata fra NILU API, fjerner outliers og lagrer renset data i en JSON-fil.
     Bruker de generelle funksjonene "remove_outliers" og "interpolate_and_save_clean_data".
+
     """
     
     raw_data_file =  "../../data/raw_data/raw_air_quality_nilu_oslo.json"
@@ -324,6 +335,7 @@ def plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolo
 def load_and_plot_air_quality():
     """
     Leser luftkvalitetsdata fra JSON og kaller `plot_air_quality` med riktige kolonner og titler.
+    Bruker generelle funksjonen `plot_air_quality`.
 
     """
 
