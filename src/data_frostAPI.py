@@ -242,8 +242,6 @@ def visualize_missing_data_missingno(df_or_path):
     else:
         raise ValueError("Input må være en filsti (str) eller en pandas DataFrame.")
 
-    print("Antall manglende verdier per kolonne:")
-    print(df.isna().sum())
 
     msno.matrix(df)
     plt.title("Visualisering av manglende data (missingno.matrix)")
@@ -329,7 +327,7 @@ def analyze_and_plot_outliers(df, variables, threshold=3):
     """
     for var in variables:
         lower_limit, upper_limit = calculate_outlier_limits(df, var, threshold)
-        outliers = df[~df[var].between(lower_limit, upper_limit)]
+        outliers = df[df[var].notna() & ~df[var].between(lower_limit, upper_limit)]
         print(f"\nOutliers for {var}: {outliers.shape[0]}")
 
         plot_outlier_distribution(df, var, lower_limit, upper_limit)

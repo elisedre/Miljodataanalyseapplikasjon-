@@ -124,7 +124,16 @@ def check_and_clean_nilu_duplicates():
 
     remove_duplicate_dates(df)
 
-    
+def analyze_outliers_nilu():
+    """
+    Leser Frost API-data fra en JSON-fil, analyserer og visualiserer outliers.
+    """
+    from data_frostAPI import analyze_and_plot_outliers
+    df_frost = pd.read_json("../../data/raw_data/raw_air_quality_nilu_oslo.json")
+    variables = ['Verdi_NO2', 'Verdi_SO2', 'Verdi_O3']
+    threshold = 3
+
+    analyze_and_plot_outliers(df_frost, variables, threshold)    
 
 def remove_outliers(raw_data_file, cols, threshold=3):
     """
