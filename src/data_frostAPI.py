@@ -9,6 +9,64 @@ from sklearn.preprocessing import PowerTransformer
 import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 
+def get_info_frostAPI(endpoint, parameters, client_id):
+    """
+    Henter informasjon fra Frost API og printer ID og navn for hvert element.
+
+    Args:
+        endpoint (str): API-endepunktet.
+        parameters (dict or None): Parametere for API-kallet.
+        client_id (str): Client ID for autentisering.
+
+    Returns:
+        list or None: Liste med hentet data, eller None ved feil.
+    """
+    try:
+        response = requests.get(endpoint, params=parameters or {}, auth=(client_id, ''))
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as e:
+        print(f"Feil ved forespørsel til Frost API: {e}")
+        return None
+    except ValueError as e:
+        print(f"Feil ved parsing av JSON: {e}")
+        return None
+
+    elements = data.get("data", [])
+    for element in elements:
+        print(f"ID: {element['id']}, Navn: {element.get('name', 'Ingen navn')}")
+    
+    return elements
+
+
+def get_elements_frostAPI(client_id):
+    """
+    Bruker get_info_frostAPI til å hente elementer fra Frost API.
+
+    Args:
+        client_id (str): Client ID for autentisering.
+    """
+    parameters = None
+    endpoint = 'https://frost.met.no/elements/v0.jsonld'
+    get_info_frostAPI(endpoint, parameters, client_id)
+
+
+def get_stations_frostAPI(client_id):
+    """
+    Bruker get_info_frostAPI til å hente stasjoner fra Frost API.
+
+    Args:
+        client_id (str): Client ID for autentisering.
+    """
+    
+    parameters = {
+        'types': 'SensorSystem',  
+        'country': 'NO',      
+    }
+
+    endpoint = 'https://frost.met.no/sources/v0.jsonld'
+    get_info_frostAPI(endpoint, parameters, client_id)
+
 def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     """
     Henter rådata fra Frost API med robust feilbehandling.
@@ -128,55 +186,6 @@ def data_frostAPI(client_id):
         value_columns=list(elements.values()),
         aggfunc="mean"
     )
-
-
-def get_info_frostAPI(endpoint, parameters, client_id):
-    """
-    Henter informasjon om tilgjengelige elementer fra Frost API.
-
-    Args:
-        endpoint (str): API-endepunktet.
-        parameters (dict): Parametere for API-kallet.
-        client_id (str): Client ID for autentisering.
-    """
-    response = requests.get(endpoint, params=parameters, auth=(client_id, ''))
-    data = response.json()
-
-    if response.status_code == 200:
-        elements = data['data']
-        for element in elements:
-            print(f"ID: {element['id']}, Navn: {element.get('name', 'Ingen navn')}")
-    else:
-        print(f"Feil ved henting av stasjoner: {data}")
-
-
-def get_elements_frostAPI(client_id):
-    """
-    Bruker get_info_frostAPI til å hente elementer fra Frost API.
-
-    Args:
-        client_id (str): Client ID for autentisering.
-    """
-    parameters = None
-    endpoint = 'https://frost.met.no/elements/v0.jsonld'
-    get_info_frostAPI(endpoint, parameters, client_id)
-
-
-def get_stations_frostAPI(client_id):
-    """
-    Bruker get_info_frostAPI til å hente stasjoner fra Frost API.
-
-    Args:
-        client_id (str): Client ID for autentisering.
-    """
-    
-    parameters = {
-        'types': 'SensorSystem',  
-        'country': 'NO',      
-    }
-
-    endpoint = 'https://frost.met.no/sources/v0.jsonld'
-    get_info_frostAPI(endpoint, parameters, client_id)
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
