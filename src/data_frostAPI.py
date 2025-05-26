@@ -9,6 +9,7 @@ from sklearn.preprocessing import PowerTransformer
 import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 import missingno as msno
+from sklearn.preprocessing import LabelEncoder
 
 def get_info_frostAPI(endpoint, parameters, client_id):
     """
@@ -169,7 +170,8 @@ def data_frostAPI(client_id):
     elements = {
         "mean(air_temperature P1D)": "Temperatur",
         "sum(precipitation_amount P1D)": "Nedbør",
-        "mean(wind_speed P1D)": "Vindhastighet"
+        "mean(wind_speed P1D)": "Vindhastighet",
+        "sourceId": "Stasjon"
     }
 
     raw_data = fetch_data_from_frostAPI(endpoint, parameters, client_id)
@@ -182,8 +184,8 @@ def data_frostAPI(client_id):
     save_data_as_json(
         data=processed_data,
         file=file,
-        index_columns=["Dato"],
-        value_columns=list(elements.values()),
+        index_columns=["Dato", "Stasjon"],
+        value_columns=[v for v in elements.values() if v != "Stasjon"],
         aggfunc="mean"
     )
 
@@ -249,43 +251,61 @@ def visualize_missing_data_missingno(df_or_path):
 
     
 
-
-def print_duplicate_dates(df):
+def print_duplicate_rows(df, subset):
     """
-    Skriver ut informasjon om dupliserte datoer i en DataFrame.
+    Skriver ut informasjon om dupliserte rader basert på angitte kolonner.
 
     Args:
-        df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
+        df (pd.DataFrame): DataFrame som skal sjekkes.
+        subset_cols (list): Liste over kolonner som skal brukes for duplikatsjekk.
+    
+    Returns:
+        None: Skriver ut antall duplikater og duplikatrader.
     """
-    if 'Dato' not in df.columns:
-        raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
+    if not all(col in df.columns for col in subset):
+        raise ValueError(f"Alle kolonner i {subset} må finnes i DataFrame.")
 
-    duplicate_dates = df[df.duplicated(subset='Dato', keep=False)]
-    grouped = duplicate_dates.groupby('Dato').size()
-
-    if grouped.empty:
-        print("Ingen dupliserte datoer funnet.")
+    duplicates = df[df.duplicated(subset=subset, keep=False)]
+    
+    if duplicates.empty:
+        print(f"Ingen duplikater funnet basert på kolonner: {subset}")
     else:
-        print(f"Antall unike duplikatdatoer: {grouped.shape[0]}")
-        for dato, antall in grouped.items():
-            print(f" - {dato.date()}: {antall} forekomster")
+        print(f"Totalt {len(duplicates)} duplikatrader basert på kolonner: {subset}")
+        print(duplicates)
 
-def remove_duplicate_dates(df):
+def remove_duplicate_dates(df, subset):
     """
-    Fjerner duplikater basert på 'Dato' og returnerer en renset DataFrame. 
-    Fjerner den andre duplikaten.
+    Fjerner duplikater basert på angitte kolonner (standard: kun 'Dato').
 
     Args:
-        df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
+        df (pd.DataFrame): DataFrame som må inneholde kolonnene i 'subset'.
+        subset (list): Kolonner som brukes for å identifisere duplikater.
 
     Returns:
-        pd.DataFrame: DataFrame uten duplikater på 'Dato'.
+        pd.DataFrame: DataFrame uten duplikater i angitt subset.
     """
-    if 'Dato' not in df.columns:
-        raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
+    for col in subset:
+        if col not in df.columns:
+            raise ValueError(f"DataFrame mangler nødvendig kolonne: {col}")
+
+    return df.drop_duplicates(subset=subset, keep='first').copy()
+
+def check_and_clean_frost_duplicates():
+    """
+    Leser data fra Frost API JSON-fil, viser duplikater, fjerner dem og returnerer en renset DataFrame.
+
+    Returns:
+        pd.DataFrame: Renset DataFrame uten duplikat-datoer.
+    """
+    filepath = "../../data/raw_data/frostAPI_data.json"
+    df = pd.read_json(filepath)
+    subset = ["Dato", "Stasjon"]
+
+    print("Før opprydding:")
+    print_duplicate_rows(df=df, subset=subset)
 
     original_len = len(df)
-    df_cleaned = df.drop_duplicates(subset='Dato', keep='first').copy()
+    df_cleaned = remove_duplicate_dates(df=df, subset=["Dato", "Stasjon"])
     cleaned_len = len(df_cleaned)
 
     print("\nEtter fjerning av duplikater:")
@@ -294,27 +314,12 @@ def remove_duplicate_dates(df):
     else:
         print(f"Rader igjen i datasettet: {cleaned_len} (fjernet {original_len - cleaned_len} duplikat(er))")
 
-    return df_cleaned
+def label_station(df):
+    # Label encoding
+    encoder = LabelEncoder()
+    df["Stasjon"] = encoder.fit_transform(df["Stasjon"]).astype(int)
+    return df
 
-def check_and_clean_frost_duplicates():
-    filepath = "../../data/raw_data/frostAPI_data.json"
-    """
-    Leser data fra Frost API JSON-fil, viser duplikater, fjerner dem og returnerer en renset DataFrame.
-
-    Args:
-        filepath (str): Filsti til Frost-data i JSON-format.
-
-    Returns:
-        pd.DataFrame: Renset DataFrame uten duplikat-datoer.
-    """
-    df = pd.read_json(filepath)
-    
-    print("Før opprydding:")
-    print_duplicate_dates(df)
-
-    remove_duplicate_dates(df)
-
- 
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
@@ -344,7 +349,7 @@ def analyze_frost_data():
     analyze_and_plot_outliers(df_frost, variables, threshold)
 
 
-def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
+def interpolate_data(pivot_df, from_date, to_date, interpolate_columns):
     """
     Setter verdiene som mangler målinger til Nan, og interpolerer alle NaN-verdier med linær metode. 
     Lagre den rensede dataen som en JSON-fil.
@@ -366,23 +371,23 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     pivot_df.rename(columns={"index": "Dato"}, inplace=True)
 
     print("\nInterpolering av NaN-verdier:")
-    for col in pivot_df.columns:
-        if col != "Dato":
-
-            
+    for col in interpolate_columns:
+        if col in pivot_df.columns:
             interpolated_mask = pivot_df[col].isna()
             null_values = pivot_df[col].isna().sum()
             pivot_df[col] = pivot_df[col].interpolate(method='linear')
-            
+
             interpolated_col_name = f"Interpolert_{col}"
             pivot_df[interpolated_col_name] = interpolated_mask.fillna(False)
 
             print(f"{col}: {null_values} verdier ble interpolert")
+    return pivot_df
 
-    # Lagre til JSON
-    pivot_df.to_json(clean_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nGruppert data er lagret under {clean_data_file}")
+def save_data_json(pivot_df, data_file):
+    """Lagrer data som en JSON-fil."""
 
+    pivot_df.to_json(data_file, orient="records", indent=4, force_ascii=False)
+    print(f"\nGruppert data er lagret under {data_file}")
 
 def clean_data_frostAPI(threshold=3):
     """
@@ -398,17 +403,27 @@ def clean_data_frostAPI(threshold=3):
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
     from_date = "2010-04-02"
     to_date = "2016-12-31"
- 
+    
+
     # Fjern outliers fra rådataene
     from data_niluAPI import remove_outliers
     pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
+
+    #Sjekker og fjerner duplikater
+    pivot_df= remove_duplicate_dates(pivot_df, subset=["Dato", "Stasjon"])
     
     # Sjekk om dataen ble lastet inn riktig og ikke er tom
     if pivot_df is not None and not pivot_df.empty:
-        interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
+        
+        pivot_df=interpolate_data(pivot_df, from_date, to_date, cols)
     else:
         print("Data kunne ikke leses eller er tom. Avbryter prosesseringen.")
 
+    # Label encoding av stasjoner
+    pivot_df=label_station(pivot_df)
+
+    # Lagre den rensede dataen som en JSON-fil
+    save_data_json(pivot_df, clean_data_file)
 
 def analyse_skewness(clean_data_file, cols=None):
     """
