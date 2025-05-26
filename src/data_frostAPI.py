@@ -9,6 +9,7 @@ from sklearn.preprocessing import PowerTransformer
 import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 import missingno as msno
+from sklearn.preprocessing import LabelEncoder
 
 def get_info_frostAPI(endpoint, parameters, client_id):
     """
@@ -310,6 +311,11 @@ def check_and_clean_frost_duplicates():
     else:
         print(f"Rader igjen i datasettet: {cleaned_len} (fjernet {original_len - cleaned_len} duplikat(er))")
 
+def label_station(df):
+    # Label encoding
+    encoder = LabelEncoder()
+    df["Stasjon"] = encoder.fit_transform(df["Stasjon"]).astype(int)
+    return df
 
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
@@ -340,7 +346,7 @@ def analyze_frost_data():
     analyze_and_plot_outliers(df_frost, variables, threshold)
 
 
-def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
+def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date, interpolate_columns):
     """
     Setter verdiene som mangler målinger til Nan, og interpolerer alle NaN-verdier med linær metode. 
     Lagre den rensede dataen som en JSON-fil.
@@ -362,23 +368,20 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
     pivot_df.rename(columns={"index": "Dato"}, inplace=True)
 
     print("\nInterpolering av NaN-verdier:")
-    for col in pivot_df.columns:
-        if col != "Dato":
-
-            
+    for col in interpolate_columns:
+        if col in pivot_df.columns:
             interpolated_mask = pivot_df[col].isna()
             null_values = pivot_df[col].isna().sum()
             pivot_df[col] = pivot_df[col].interpolate(method='linear')
-            
+
             interpolated_col_name = f"Interpolert_{col}"
             pivot_df[interpolated_col_name] = interpolated_mask.fillna(False)
 
             print(f"{col}: {null_values} verdier ble interpolert")
 
-    # Lagre til JSON
+
     pivot_df.to_json(clean_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nGruppert data er lagret under {clean_data_file}")
-
 
 def clean_data_frostAPI(threshold=3):
     """
@@ -395,16 +398,20 @@ def clean_data_frostAPI(threshold=3):
     from_date = "2010-04-02"
     to_date = "2016-12-31"
     
-    #Sjekker og fjerner duplikater
-    pivot_df= remove_duplicate_dates
 
     # Fjern outliers fra rådataene
     from data_niluAPI import remove_outliers
     pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
+
+    #Sjekker og fjerner duplikater
+    pivot_df= remove_duplicate_dates(pivot_df)
+
+    # Label encoding av stasjoner
+    pivot_df=label_station(pivot_df)
     
     # Sjekk om dataen ble lastet inn riktig og ikke er tom
     if pivot_df is not None and not pivot_df.empty:
-        interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date)
+        interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date, cols)
     else:
         print("Data kunne ikke leses eller er tom. Avbryter prosesseringen.")
 
