@@ -9,10 +9,9 @@ from sklearn.preprocessing import PowerTransformer
 import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 
-
 def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     """
-    Henter rådata fra Frost API.
+    Henter rådata fra Frost API med robust feilbehandling.
 
     Args:
         endpoint (str): API-endepunktet.
@@ -22,16 +21,19 @@ def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     Returns:
         list: Liste med data fra API-et, eller en tom liste hvis noe går galt.
     """
-    response = requests.get(endpoint, params=parameters, auth=(client_id, ""))
+    try:
+        response = requests.get(endpoint, params=parameters, auth=(client_id, ""))
+        response.raise_for_status()  # Kaster exception hvis status != 200
+        return response.json().get("data", [])
     
-    # Sjekk om forespørselen var vellykket
-    if response.status_code != 200:
-        print("Feil ved henting av data: Status Code:", response.status_code)
-        print("Response Text:", response.text)
+    except requests.exceptions.RequestException as e:
+        print(f"Feil ved henting av data fra Frost API:\n→ {e}")
         return []
-    
-    # Returner data fra API-responsen
-    return response.json().get("data", [])
+
+    except ValueError as e:
+        print(f"Feil ved parsing av JSON-respons:\n→ {e}")
+        return []
+
 
 
 def process_weather_data(data, elements):
