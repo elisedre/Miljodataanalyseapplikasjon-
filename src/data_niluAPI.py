@@ -227,59 +227,60 @@ def clean_raw_data():
     except Exception as e:
         print(f"Feil i renseprosessen: {e}")
 
-
-def analyse_and_fix_skewness(clean_data_file, threshold, cols=None):
+def analyse_skewness(df, cols):
     """
-    Leser JSON-fil, analyserer og korrigerer skjevhet i dataene.
-    Skjeve kolonner (>|threshold|) får Yeo-Johnson transformasjon og standardisering.
-    Ikke-skjeve kolonner blir kun standardisert.
-    Transformerte verdier legges til med '_Trans'-suffix.
+    Analyserer og skriver ut skjevhet for valgte kolonner.
 
     Args:
-        clean_data_file (str): Filsti til ren data.
-        threshold (float): Grenseverdi for skjevhet.
-        cols (list): Kolonner som skal analyseres. Hvis None, velges alle numeriske.
+        df (pd.DataFrame): DataFrame med data.
+        cols (list): Liste over kolonner som skal analyseres.
 
     Returns:
-        pd.DataFrame: DataFrame med transformerte verdier lagt til.
+        dict: Ordbok med kolonnenavn som nøkkel og skjevhetsverdi som verdi.
     """
-    try:
-        df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
-    except ValueError as e:
-        print(f"Feil ved lesing av fil: {e}")
-        return pd.DataFrame()
-
-    df_transformed = df.copy()
-    yeo = PowerTransformer(method='yeo-johnson')
-    scaler = StandardScaler()
-
-    if cols is None:
-        cols = df.select_dtypes(include='number').columns
-
+    skewness_dict = {}
     print("Skjevhet før transformasjon:")
     for col in cols:
-        print(f"→ {col}: {df[col].skew():.2f}")
+        skew_val = df[col].skew()
+        skewness_dict[col] = skew_val
+        print(f"→ {col}: {skew_val:.2f}")
+    return skewness_dict
+
+def fix_skewness(df, skewness_dict, threshold):
+    """
+    Transformerer/skalerer kolonner basert på skjevhetsverdier.
+    Legger til nye kolonner med '_Trans'-suffix.
+
+    Args:
+        df (pd.DataFrame): DataFrame med data.
+        skewness_dict (dict): Ordbok med skjevhetsverdier for kolonner.
+        threshold (float): Grenseverdi for skjevhet.
+
+    Returns:
+        pd.DataFrame: DataFrame med transformerte kolonner lagt til.
+    """
+    yeo = PowerTransformer(method='yeo-johnson')
+    scaler = StandardScaler()
+    df_transformed = df.copy()
 
     print(f"\nBehandler kolonner med skjevhet over ±{threshold}:\n")
-
-    for col in cols:
-        skew = df[col].skew()
+    for col, skew in skewness_dict.items():
         new_col = f"{col}_Trans"
         try:
             if abs(skew) > threshold:
                 print(f"{col}: skjevhet {skew:.2f} → Yeo-Johnson + skalering")
                 transformed = yeo.fit_transform(df[[col]])
                 scaled = scaler.fit_transform(transformed)
-                df_transformed[new_col] = scaled
+                df_transformed[new_col] = scaled.flatten()
             else:
                 print(f"{col}: skjevhet {skew:.2f} → kun skalering")
                 scaled = scaler.fit_transform(df[[col]])
-                df_transformed[new_col] = scaled
+                df_transformed[new_col] = scaled.flatten()
         except Exception as e:
             print(f"Feil ved transformasjon av {col}: {e}")
 
     print("\nSkjevhet etter transformasjon:")
-    for col in cols:
+    for col in skewness_dict:
         new_col = f"{col}_Trans"
         if new_col in df_transformed.columns:
             print(f"→ {new_col}: {df_transformed[new_col].skew():.2f}")
@@ -296,12 +297,19 @@ def fix_skewness_data_niluAPI():
     threshold = 1.0
     cols = ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
 
-    df_transformed = analyse_and_fix_skewness(clean_data_file, threshold, cols)
+    try:
+        df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
+    except ValueError as e:
+        print(f"Feil ved lesing av fil: {e}")
+        return
+
+    skewness_dict = analyse_skewness(df, cols)
+    df_transformed = fix_skewness(df, skewness_dict, threshold)
+
     if df_transformed.empty:
         print("Ingen data å lagre.")
         return
 
-    # Velg kun de nødvendige kolonnene
     transformed_columns = [f"{col}_Trans" for col in cols]
     final_columns = ['Dato', 'Dekningsgrad_NO2', 'Dekningsgrad_O3', 'Dekningsgrad_SO2'] + transformed_columns
     df_final = df_transformed[final_columns]
@@ -311,6 +319,7 @@ def fix_skewness_data_niluAPI():
         print(f"\nTransformert data lagret i: {analyzed_data_file}")
     except Exception as e:
         print(f"Feil ved lagring av transformert data: {e}")
+
 
 def plot_air_quality(df, verdi_kolonner, titler, fargekolonne, tidskolonne="Dato"):
     """
