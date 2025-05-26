@@ -52,14 +52,14 @@ def analyze_hottest_days(df, date_col, temp_col, precip_col, n_days):
 
     # Visualisering: Kakediagram etter år 
     try:
-        år_telling = hottest_days['År'].value_counts()
+        year_counts = hottest_days['År'].value_counts()
 
         plt.figure(figsize=(6, 6))
         plt.pie(
-            år_telling,
-            labels=år_telling.index,
-            autopct='%1.1f%%',
-            colors=plt.cm.Set3.colors
+            year_counts,
+            labels = year_counts.index,
+            autopct = '%1.1f%%',
+            colors = plt.cm.Set3.colors
         )
         plt.title(f"De {n_days} varmeste dagene fordelt på år")
         plt.axis('equal')
@@ -88,72 +88,89 @@ def analyze_frost_api_clean_data():
 
     # Kaller analysefunksjonen med relevante kolonnenavn
     return analyze_hottest_days(
-        df=df,
-        date_col="Dato",
-        temp_col="Temperatur",
-        precip_col="Nedbør",
-        n_days=10
+        df = df,
+        date_col = "Dato",
+        temp_col = "Temperatur",
+        precip_col = "Nedbør",
+        n_days = 10
     )
 
-
-
-
-def analyze_coldest_days(df, date, temp, n_days):
+def analyze_coldest_days(df, date_col, temp_col, n_days):
     """
-    Analyserer de kaldeste dagene i et datasett.
+    Analyserer de kaldeste dagene i et datasett, og visualiserer fordelingen
+    av disse dagene etter år i et kakediagram.
 
     Args:
         df (pd.DataFrame): DataFrame med værdata.
-        date (str): Kolonnenavn for dato.
-        temp (str): Kolonnenavn for temperatur.
-        n_days (int): Antall kaldeste dager å analysere.
-    
+        date_col (str): Navn på kolonnen med dato.
+        temp_col (str): Navn på kolonnen med temperatur.
+        n_days (int): Antall kaldeste dager som skal analyseres.
+
     Returns:
-        pd.DataFrame: DataFrame med de kaldeste dagene og deres år.
+        pd.DataFrame: DataFrame med de kaldeste dagene og tilhørende år.
     """
-    
-    # SQL-spørring for å finne de 10 dagene med lavest temperatur
-    query = f"""
-        SELECT {date}, {temp}
-        FROM df 
-        ORDER BY {temp} ASC 
-        LIMIT {n_days}
-    """
-    result = psql.sqldf(query, locals())
+    try:
+        # SQL-spørring for å hente de n kaldeste dagene
+        query = f"""
+            SELECT {date_col}, {temp_col}
+            FROM df 
+            ORDER BY {temp_col} ASC 
+            LIMIT {n_days}
+        """
+        coldest_days = psql.sqldf(query, locals())
 
-    # Kakediagram for å vise fordelingen av de kaldeste dagene etter år
-    # Legger til en kolonne med år
-    result['År'] = pd.to_datetime(result[date]).dt.year
+        # Legger til kolonne med år fra dato
+        coldest_days['År'] = pd.to_datetime(coldest_days[date_col]).dt.year
 
-    # Teller hvor mange ganger hvert år forekommer blant de kaldeste dagene
-    år_telling = result['År'].value_counts()
+    except Exception as e:
+        print(f"Feil under henting eller bearbeiding av data: {e}")
+        return pd.DataFrame()
 
+    # Visualisering: kakediagram som viser fordeling etter år
+    try:
+        year_counts = coldest_days['År'].value_counts()
 
-    plt.figure(figsize=(6, 6))
-    plt.pie(
-        år_telling,
-        labels=år_telling.index,
-        autopct='%1.1f%%',
-        colors=plt.cm.Set3.colors 
-    )
-    plt.title(f"De {n_days} kaldeste dagene fordelt på år")
-    plt.axis('equal')
-    plt.show()
+        plt.figure(figsize=(6, 6))
+        plt.pie(
+            year_counts,
+            labels=year_counts.index,
+            autopct='%1.1f%%',
+            colors=plt.cm.Set3.colors
+        )
+        plt.title(f"De {n_days} kaldeste dagene fordelt på år")
+        plt.axis('equal')
+        plt.show()
 
-    return result 
+    except Exception as e:
+        print(f"Feil under visualisering: {e}")
+
+    return coldest_days
+
 
 def analyze_coldest_frost_api_data():
     """
-    Leser inn værdata fra frostAPI og analyserer de kaldeste dagene ved å kalle 
-    den generelle funksjonen "analyze_coldest_days".
-    
+    Leser inn rengjorte værdata fra Frost API og analyserer de kaldeste dagene
+    ved hjelp av analyze_coldest_days-funksjonen.
+
     Returns:
-        pd.DataFrame: DataFrame med de kaldeste dagene og deres år.
+        pd.DataFrame: DataFrame med de kaldeste dagene og tilhørende år.
     """
+    file_path = "../../data/clean_data/frostAPI_clean_data.json"
+
+    try:
+        df = pd.read_json(file_path)
+    except Exception as e:
+        print(f"Feil ved lesing av fil '{file_path}': {e}")
+        return pd.DataFrame()
     
-    file_name = "../../data/clean_data/frostAPI_clean_data.json"
-    df = pd.read_json(file_name)
-    return analyze_coldest_days(df, date="Dato", temp="Temperatur", n_days=10)
+    # Kaller analysefunksjonen med relevante kolonnenavn
+    return analyze_coldest_days(
+        df=df,
+        date_col="Dato",
+        temp_col="Temperatur",
+        n_days=10
+    )
+
 
 
 def analyze_avg_temperature_per_year(df, date, temp):
