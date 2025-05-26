@@ -1,128 +1,192 @@
 import json
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import pandas as pd
-import numpy as np
-import lightgbm as lgb
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-from datetime import timedelta
-import json
 from sklearn.metrics import r2_score, mean_squared_error
-from lightgbm import LGBMRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
 from sklearn.base import clone
+from lightgbm import LGBMRegressor
 import plotly.graph_objects as go
-import pandas as pd
 
-
-def plot_no2_with_temperature(df):
+def prepare_dataframe(df, date_col):
     """
-    Lager en linjegraf for Verdi_NO2 med temperatur og NO₂ på to forskjellige y-akser.
+    Gjør klar DataFrame ved å konvertere og sortere datokolonnen.
+
+    Args:
+        df (pd.DataFrame): Datasettet som skal behandles.
+        date_col (str): Navnet på kolonnen som inneholder dato.
+
+    Returns:
+        pd.DataFrame: Sortert DataFrame med konvertert datokolonne.
+
+    Raises:
+        ValueError: Hvis datokolonnen mangler eller kan ikke konverteres.
+    """
+    df = df.copy()
+    if date_col not in df.columns:
+        raise ValueError(f"Kolonnen '{date_col}' finnes ikke i datasettet.")
+
+    try:
+        df[date_col] = pd.to_datetime(df[date_col])
+    except Exception as e:
+        raise ValueError(f"Kunne ikke konvertere '{date_col}' til dato: {e}")
     
-    Forventede kolonner: 'Dato', 'Temperatur', 'Verdi_NO2'
+    return df.sort_values(date_col)
+
+def create_dual_axis_plot(df, date_col, y1_col, y2_col, y1_label, y2_label, y1_color, y2_color):
     """
+    Lager et plott med to y-akser på samme tidsakse.
 
-    df['Dato'] = pd.to_datetime(df['Dato'])
-    df = df.sort_values('Dato')
+    Args:
+        df (pd.DataFrame): Datasettet som skal plottes.
+        date_col (str): Navnet på datokolonnen.
+        y1_col (str): Kolonne for venstre y-akse.
+        y2_col (str): Kolonne for høyre y-akse.
+        y1_label (str): Etikett for venstre y-akse.
+        y2_label (str): Etikett for høyre y-akse.
+        y1_color (str): Farge for venstre linje.
+        y2_color (str): Farge for høyre linje.
 
+    Returns:
+        tuple: (fig, ax1) – Matplotlib-figur og primærakse.
+    
+    Raises:
+        ValueError: Hvis kolonner mangler.
+    """
+    for col in [y1_col, y2_col]:
+        if col not in df.columns:
+            raise ValueError(f"Mangler kolonne: '{col}'")
+        
     fig, ax1 = plt.subplots(figsize=(14, 6))
 
-    # Temperatur på venstre y-akse
     ax1.set_xlabel("Dato")
-    ax1.set_ylabel("Temperatur (°C)", color='tab:blue')
-    ax1.plot(df['Dato'], df['Temperatur'], color='tab:blue', label='Temperatur', linewidth=2)
-    ax1.tick_params(axis='y', labelcolor='tab:blue')
-
-    # NO₂ på høyre y-akse
-    ax2 = ax1.twinx()
-    ax2.set_ylabel("NO₂ (μg/m³)", color='tab:orange')
-    ax2.plot(df['Dato'], df['Verdi_NO2'], color='tab:orange', label='NO₂ (μg/m³)', linewidth=2)
-    ax2.tick_params(axis='y', labelcolor='tab:orange')
-
-    # tittel og rutenett
-    ax1.set_title("Temperatur og NO₂ over tid")
+    ax1.set_ylabel(y1_label, color=y1_color)
+    ax1.plot(df[date_col], df[y1_col], color=y1_color, linewidth=2)
+    ax1.tick_params(axis='y', labelcolor=y1_color)
     ax1.grid(True, linestyle='--', alpha=0.5)
 
-    # Datoformat på x-aksen
+    ax2 = ax1.twinx()
+    ax2.set_ylabel(y2_label, color=y2_color)
+    ax2.plot(df[date_col], df[y2_col], color=y2_color, linewidth=2)
+    ax2.tick_params(axis='y', labelcolor=y2_color)
+
+    return fig, ax1
+
+def plot_dual_time_series(df, date_col, y1_col, y2_col, y1_label, y2_label, title, y1_color,
+                          y2_color, show_colorbar=True):
+    """
+    Visualiserer to tidsserier på samme graf med to y-akser.
+
+    Args:
+        df (pd.DataFrame): Datasettet som inneholder verdiene.
+        date_col (str): Kolonnen med datoer.
+        y1_col (str): Kolonnen for venstre y-akse.
+        y2_col (str): Kolonnen for høyre y-akse.
+        y1_label (str): Tekst for venstre y-akse.
+        y2_label (str): Tekst for høyre y-akse.
+        title (str): Tittel på figuren.
+        y1_color (str): Farge for venstre dataserie.
+        y2_color (str): Farge for høyre dataserie.
+        show_colorbar (bool): Om fargeskala skal vises basert på y1_col.
+
+    Returns:
+        None: Visulaiserer graf.
+    """
+
+    df = prepare_dataframe(df, date_col)
+    fig, ax1 = create_dual_axis_plot(df, date_col, y1_col, y2_col, y1_label, y2_label, y1_color, y2_color)
+    
+
+    
     ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
     plt.xticks(rotation=45)
 
-    sm = plt.cm.ScalarMappable(cmap='coolwarm', norm=plt.Normalize(vmin=df['Temperatur'].min(), vmax=df['Temperatur'].max()))
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax1, orientation='vertical', label='Temperatur (°C)')
+    if show_colorbar and pd.api.types.is_numeric_dtype(df[y1_col]):
+        sm = plt.cm.ScalarMappable(
+            cmap='coolwarm',
+            norm=plt.Normalize(vmin=df[y1_col].min(), vmax=df[y1_col].max())
+        )
+        sm.set_array([])
+        plt.colorbar(sm, ax=ax1, orientation='vertical', label=y1_label)
 
+    ax1.set_title(title)
     plt.tight_layout()
     plt.show()
+    
+
+def plot_temperature_no2(df):
+    """
+    Viser et ferdig oppsett for visualisering av temperatur og NO₂ over tid.
+
+    Args:
+        df (pd.DataFrame): Datasett med kolonnene 'Dato', 'Temperatur' og 'Verdi_NO2'.
+
+    Returns:
+        Visualisering av temperatur og NO₂ på to y-akser.
+    """
+    plot_dual_time_series(df=df, date_col="Dato", y1_col="Temperatur", y2_col="Verdi_NO2", y1_label="Temperatur (°C)",
+                          y2_label="NO₂ (μg/m³)", title="Temperatur og NO₂ over tid", y1_color="tab:blue",
+                          y2_color="tab:orange", show_colorbar=True)
 
 
 
 def load_merge_and_plot_no2_temp():
     """
-    Leser inn frost- og nilu-data fra JSON-filer, slår sammen på 'Dato',
-    og plotter NO2 og temperatur over tid med to y-akser.
-
+    Leser inn frost- og NILU-data fra JSON-filer, slår sammen på 'Dato',
+    og plotter NO₂ og temperatur over tid.
     """
-    # Last inn JSON-data
-    with open("../data/clean_data/frostAPI_clean_data.json", "r", encoding="utf-8") as file:
-        data_frost = json.load(file)
+    merged_df = combine_df(
+        "../data/clean_data/frostAPI_clean_data.json",
+        "../data/clean_data/niluAPI_clean_data.json",
+        "Dato"
+    )
+    if merged_df is not None and not merged_df.empty:
+        plot_temperature_no2(merged_df)
+    else:
+        print("Klarte ikke å laste eller kombinere dataene.")
+    
 
-    with open("../data/clean_data/niluAPI_clean_data.json", "r", encoding="utf-8") as file:
-        data_nilu = json.load(file)
-
-    # Konverter til DataFrames
-    frost_df = pd.DataFrame(data_frost)
-    nilu_df = pd.DataFrame(data_nilu)
-
-    # Sørg for at 'Dato' er datetime
-    frost_df['Dato'] = pd.to_datetime(frost_df['Dato'])
-    nilu_df['Dato'] = pd.to_datetime(nilu_df['Dato'])
-
-    # Slå sammen på 'Dato'
-    merged_df = pd.merge(frost_df, nilu_df, on='Dato', how='inner')
-
-    # Kall på plottefunksjonen
-    plot_no2_with_temperature(merged_df)
-
-def kombinere_df(file1_path, file2_path, kombineringspunkt):
+def combine_df(file1_path, file2_path, combining_point):
     """
     Leser og slår sammen to JSON-filer, og returnerer et kombinert flat DataFrame.
     
     Argumenter:
     - file1_path: sti til første JSON-fil
     - file2_path: sti til andre JSON-fil
-    - kombineringspunkt: kolonnenavn for å merge (f.eks. 'Dato')
+    - combining_point: kolonnenavn for å merge (f.eks. 'Dato')
+
+    Return:
+    - pd.DataFrame: Kombinert DataFrame med flat struktur
     """
-    #Les og normaliser første fil
-    with open(file1_path, "r", encoding="utf-8") as f1:
-        json1 = json.load(f1)
-    df1 = pd.json_normalize(json1)
+    try:
+        with open(file1_path, "r", encoding="utf-8") as f1:
+            df1 = pd.json_normalize(json.load(f1))
+        with open(file2_path, "r", encoding="utf-8") as f2:
+            df2 = pd.json_normalize(json.load(f2))
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Finner ikke fil: {e.filename}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON-feil i en av filene: {e}")
 
-    #Les og normaliser andre fil
-    with open(file2_path, "r", encoding="utf-8") as f2:
-        json2 = json.load(f2)
-    df2 = pd.json_normalize(json2)
+    if combining_point not in df1.columns or combining_point not in df2.columns:
+        raise KeyError(f"Kolonnen '{combining_point}' finnes ikke i en av filene.")
 
-    #Kombiner data
-    df_combined = pd.merge(df1, df2, on=kombineringspunkt, how='inner')
-
-    #Konverter til datetime
-    df_combined[kombineringspunkt] = pd.to_datetime(df_combined[kombineringspunkt])
-
-
+    df_combined = pd.merge(df1, df2, on=combining_point, how="inner")
+    df_combined[combining_point] = pd.to_datetime(df_combined[combining_point])
     return df_combined
 
-def legg_til_sesongvariabler(df, datokolonne="Dato"):
+    
+
+def add_seasonal_features(df, date_col="Dato"):
     """
     Legger til sesongbaserte variabler i datasettet basert på en datokolonne.
 
     Args:
         df (pd.DataFrame): Datasettet som inneholder en datokolonne.
-        datokolonne (str, optional): Navnet på kolonnen som inneholder datoer. 
+        date_col (str, optional): Navnet på kolonnen som inneholder datoer. 
                                      Standard er "Dato".
 
     Returns:
@@ -133,16 +197,24 @@ def legg_til_sesongvariabler(df, datokolonne="Dato"):
             - "sin_dag": Sinus av dag_i_året (for å modellere sesonger)
             - "cos_dag": Cosinus av dag_i_året (for å modellere sesonger)
     """
+    
     df = df.copy()
-    df[datokolonne] = pd.to_datetime(df[datokolonne])
-    df["måned"] = df[datokolonne].dt.month
-    df["ukedag"] = df[datokolonne].dt.weekday
-    df["dag_i_året"] = df[datokolonne].dt.dayofyear
+
+    # Konverter kolonnen til datetime-format
+    df=prepare_dataframe(df, date_col)
+    
+    # Legg til sesongbaserte variabler
+    df["måned"] = df[date_col].dt.month
+    df["ukedag"] = df[date_col].dt.weekday
+    df["dag_i_året"] = df[date_col].dt.dayofyear
+
+    # Sinus og cosinus brukes til å modellere sesongmessige mønstre
     df["sin_dag"] = np.sin(2 * np.pi * df["dag_i_året"] / 365)
     df["cos_dag"] = np.cos(2 * np.pi * df["dag_i_året"] / 365)
+
     return df
 
-def tren_modell(df, target_col, features, modell_objekt):
+def train_model(df, target_col, features, model_object):
     """
     Trener en prediksjonsmodell basert på utvalgte inputvariabler og målvariabel.
 
@@ -150,72 +222,87 @@ def tren_modell(df, target_col, features, modell_objekt):
         df (pd.DataFrame): Datasettet som inneholder input- og målvariabler.
         target_col (str): Navnet på kolonnen som skal brukes som målvariabel (y).
         features (list of str): Liste over kolonner som skal brukes som input (X).
-        modell_objekt (obj): Et modellobjekt som implementerer .fit(X, y),
+        model_object (obj): Et modellobjekt som implementerer .fit(X, y),
                              f.eks. LinearRegression(), LGBMRegressor().
 
     Returns:
-        modell_objekt: Den trenede modellen, klar for prediksjon med .predict().
+        model_object: Den trenede modellen, klar for prediksjon med .predict().
     """
+
     X = df[features]
     y = df[target_col]
-    modell_objekt.fit(X, y)
-    return modell_objekt
+    model_object.fit(X, y)
+    return model_object
+    
 
 
-def prediker_fremtid(df_siste, model, features, target_col, antall_dager, datokolonne="Dato"):
+def predict_feature_values(df, model, features, target_col, num_days, date_col="Dato"):
     """
     Genererer fremtidige prediksjoner basert på siste kjente rad i datasettet.
 
     Args:
-        df_siste (pd.DataFrame): Det historiske datasettet som modellen baseres på.
+        df (pd.DataFrame): Det historiske datasettet som modellen baseres på.
         model (obj): En trent modell med støtte for .predict().
         features (list of str): Liste over feature-kolonner som brukes til prediksjon.
         target_col (str): Navnet på kolonnen som skal predikeres.
-        antall_dager (int): Hvor mange dager frem i tid det skal predikeres.
-        datokolonne (str, optional): Navnet på datokolonnen. Standard er "Dato".
+        num_days (int): Hvor mange dager frem i tid det skal predikeres.
+        date_col (str, optional): Navnet på datokolonnen. Standard er "Dato".
 
     Returns:
         pd.DataFrame: En DataFrame med kolonnene:
             - "Dato": Fremtidige datoer
             - "predicted_<target_col>": Modellens predikerte verdier for hver dag
     """
-    siste_dato = pd.to_datetime(df_siste[datokolonne].max())
-    siste_rad = df_siste.iloc[-1]
+    
+    # Hent siste dato og siste rad for baselineverdier
+    last_date = pd.to_datetime(df[date_col].max())
+    last_col = df.iloc[-1]
 
-    fremtidige_datoer = [siste_dato + pd.Timedelta(days=i) for i in range(1, antall_dager + 1)]
-    base_data = {"Dato": fremtidige_datoer}
+    # Generer fremtidige datoer
+    future_dates = [last_date + pd.Timedelta(days=i) for i in range(1, num_days + 1)]
+    base_data = {date_col: future_dates}
 
-    sesong_features = {"måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"}
+    # Kopier relevante verdier videre til fremtidsdata
+    seasonal_features = {"måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"}
     for f in features:
-        if f not in sesong_features and f in siste_rad:
-            base_data[f] = siste_rad[f]
-    df_fremtid = pd.DataFrame(base_data)
-    df_fremtid = legg_til_sesongvariabler(df_fremtid, datokolonne)        
+        if f not in seasonal_features and f in last_col:
+            base_data[f] = last_col[f]
 
-    X_fremtid = df_fremtid[features]
-    df_fremtid[f"predicted_{target_col}"] = model.predict(X_fremtid)
+    df_future = pd.DataFrame(base_data)
 
-    return df_fremtid[["Dato", f"predicted_{target_col}"]]
+    # Legg til sesongbaserte variabler
+    df_future = add_seasonal_features(df_future, date_col)
+
+    # Prediker
+    X_future = df_future[features]
+    df_future[f"predicted_{target_col}"] = model.predict(X_future)
+
+    return df_future[[date_col, f"predicted_{target_col}"]]
 
 
-import plotly.graph_objects as go
-import pandas as pd
-
-def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, dekningsgrad=None):
+def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_future, target_col, coverage=None):
     """
-    Interaktiv graf som viser treningsdata, testdata (faktisk og predikert), og fremtidige prediksjoner.
+    Lager en interaktiv visualisering av treningsdata, testdata og fremtidige prediksjoner.
 
     Args:
         y_train (pd.Series): Faktiske verdier som modellen ble trent på.
-        y_test (pd.Series): Faktiske verdier brukt for testing av modellen.
+        y_test (pd.Series): Faktiske verdier brukt for testing.
         y_pred (array-like): Modellens prediksjoner på testsettet.
-        df_fremtid (pd.DataFrame): DataFrame med fremtidige prediksjoner.
-                                   Må inneholde kolonnen "predicted_<target_col>".
-        target_col (str): Navnet på målvariabelen (target) som visualiseres.
-        dekningsgrad (pd.Series, optional): Serie med dekningsgrad.
+        df_future (pd.DataFrame): DataFrame med fremtidige prediksjoner.
+                                  Må inneholde kolonnen "predicted_<target_col>".
+        target_col (str): Navn på målvariabelen som skal vises i grafen.
+        coverage (pd.Series, optional): Valgfri Series med dekningsgrad (f.eks. 0–100%).
+
+    Return:
+        Viser et interaktivt plot i nettleser / notebook med historiske og fremtidige verdier.
     """
 
-    forecast = df_fremtid[f"predicted_{target_col}"].values
+    try:
+        forecast = df_future[f"predicted_{target_col}"].values
+    except KeyError:
+        raise KeyError(f"Kolonnen 'predicted_{target_col}' finnes ikke i df_future.")
+
+    # Definer x-verdier for de tre segmentene (historisk, test, fremtid)
     total_len = len(y_train) + len(y_test) + len(forecast)
     x_train = list(range(0, len(y_train)))
     x_test = list(range(len(y_train), len(y_train) + len(y_test)))
@@ -223,21 +310,41 @@ def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, 
 
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=x_train, y=y_train, mode='lines', name='Treningsdata', line=dict(color='#FF69B4')))
-    fig.add_trace(go.Scatter(x=x_test, y=y_test, mode='lines', name='Testdata (ekte)', line=dict(color='red')))
-    fig.add_trace(go.Scatter(x=x_test, y=y_pred, mode='lines', name='Testdata (modell)', line=dict(color='orange', dash='dash')))
-    fig.add_trace(go.Scatter(x=x_fut, y=forecast, mode='lines', name='Fremtidig prediksjon', line=dict(color='blue', dash='dot')))
+    # Treningsdata
+    fig.add_trace(go.Scatter(
+        x=x_train, y=y_train, mode='lines', name='Treningsdata', line=dict(color='#FF69B4')
+    ))
 
-    if dekningsgrad is not None:
-        dekningsgrad = dekningsgrad.reset_index(drop=True)
-        for idx, val in enumerate(dekningsgrad[:total_len]):
+    # Testdata (faktiske verdier)
+    fig.add_trace(go.Scatter(
+        x=x_test, y=y_test, mode='lines', name='Testdata (ekte)', line=dict(color='red')
+    ))
+
+    # Testdata (modellens prediksjoner)
+    fig.add_trace(go.Scatter(
+        x=x_test, y=y_pred, mode='lines', name='Testdata (modell)', line=dict(color='orange', dash='dash')
+    ))
+
+    # Fremtidige prediksjoner
+    fig.add_trace(go.Scatter(
+        x=x_fut, y=forecast, mode='lines', name='Fremtidig prediksjon', line=dict(color='blue', dash='dot')
+    ))
+
+    # Valgfri fargelegging basert på dekningsgrad
+    if coverage is not None:
+        coverage = coverage.reset_index(drop=True)
+        for idx, val in enumerate(coverage[:total_len]):
             if val == 0.0:
-                fig.add_vrect(x0=idx-0.5, x1=idx+0.5, fillcolor="darkgray", opacity=0.4, line_width=0)
+                fig.add_vrect(x0=idx - 0.5, x1=idx + 0.5, fillcolor="darkgray", opacity=0.4, line_width=0)
             elif 0.0 < val < 100.0:
-                fig.add_vrect(x0=idx-0.5, x1=idx+0.5, fillcolor="lightgreen", opacity=0.4, line_width=0)
+                fig.add_vrect(x0=idx - 0.5, x1=idx + 0.5, fillcolor="lightgreen", opacity=0.4, line_width=0)
 
-    fig.add_vline(x=len(y_train) + len(y_test) - 1, line=dict(color='gray', dash='dash'))
+    # Visuell skillelinje mellom test og fremtid
+    fig.add_vline(
+        x=len(y_train) + len(y_test) - 1, line=dict(color='gray', dash='dash')
+    )
 
+    # Oppsett av layout og aksene
     fig.update_layout(
         title=f"{target_col} – Historikk, test og fremtid",
         xaxis_title="Tidsindeks",
@@ -250,9 +357,41 @@ def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, 
 
     fig.show()
 
+def evaluate_and_train_model(df, target_col, features, model_object, test_size=0.2):
+    """
+    Trener og evaluerer en modell på gitt datasett og returnerer treningsdata, testdata og prediksjoner.
 
-def prediksjon_med_fremtidige_verdier(df, target_col, features, model_objekt,
-                                      antall_dager=365, test_size=0.2, dekningsgrad=None):
+    Args:
+        df (pd.DataFrame): Datasett med input- og målvariabler.
+        target_col (str): Navn på kolonnen som skal predikeres.
+        features (list of str): Liste over kolonnenavn som brukes som input.
+        model_object (obj): Modell som støtter fit() og predict().
+        test_size (float): Andel som skal brukes til test. Default er 0.2.
+
+    Returns:
+        tuple: (model, X_train, X_test, y_train, y_test, y_pred)
+    """
+   
+    X = df[features]
+    y = df[target_col]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, shuffle=False)
+
+    model = model_object.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    r2 = r2_score(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+
+    print(f"\n🔍 Evaluering av modellen '{model_object.__class__.__name__}' for '{target_col}':")
+    print(f"- R²-score: {r2:.4f}")
+    print(f"- MSE: {mse:.4f}")
+
+    return y_train, y_test, y_pred
+
+    
+def prediction_with_futurevalues(df, target_col, features, model_object,
+                                      num_days=365, test_size=0.2, coverage=None):
     """
     Trener og evaluerer en prediksjonsmodell, og bruker den til å forutsi fremtidige verdier.
 
@@ -260,11 +399,11 @@ def prediksjon_med_fremtidige_verdier(df, target_col, features, model_objekt,
         df (pd.DataFrame): Datasettet som inneholder datokolonne, inputvariabler og target.
         target_col (str): Navn på målvariabelen (kolonnen som skal predikeres).
         features (list of str): Liste over kolonnenavn som brukes som input (X).
-        model_objekt (obj): Et skalert/skalert modellobjekt med .fit() og .predict(), 
+        model_object (obj): Et skalert/skalert modellobjekt med .fit() og .predict(), 
                             f.eks. LinearRegression(), LGBMRegressor(), Pipeline(...)
-        antall_dager (int, optional): Hvor mange dager frem i tid det skal predikeres. Default er 365.
+        num_days (int, optional): Hvor mange dager frem i tid det skal predikeres. Default er 365.
         test_size (float, optional): Andel av data som skal brukes som testsett. Default er 0.2.
-        dekningsgrad (pd.Series, optional): En valgfri Series som markerer interpolerte/mangelfulle verdier 
+        coverage (pd.Series, optional): En valgfri Series som markerer interpolerte/mangelfulle verdier 
                                             (brukes til fargelegging i plottet).
 
     Returns:
@@ -273,44 +412,28 @@ def prediksjon_med_fremtidige_verdier(df, target_col, features, model_objekt,
 
     #Forbered data
     df = df.copy()
-    df["Dato"] = pd.to_datetime(df["Dato"])
-    df = legg_til_sesongvariabler(df)
-    if isinstance(model_objekt, LGBMRegressor):
-        model_objekt.set_params(verbose=-1)
+    df = add_seasonal_features(df)
+
+    #fjerner overflødig informasjon fra LGBMRegressor, om brukt
+    if isinstance(model_object, LGBMRegressor):
+        model_object.set_params(verbose=-1)
 
 
-    X = df[features]
-    y = df[target_col]
-
-    #Del opp i trenings- og testdata (behold rekkefølge)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, shuffle=False
-    )
-
-    #Tren på treningsdata
-    model = model_objekt.fit(X_train, y_train)
-
-    #Evaluer på testdata
-    y_pred = model.predict(X_test)
-    r2 = r2_score(y_test, y_pred)
-    mse = mean_squared_error(y_test, y_pred)
-
-    print(f"\n🔍 Evaluering av modellen '{model_objekt.__class__.__name__}'for '{target_col}' (på testdata):")
-    print(f"- R²-score: {r2:.4f}")
-    print(f"- MSE: {mse:.4f}")
+    y_train, y_test, y_pred = evaluate_and_train_model(df=df, target_col=target_col, features=features,
+                                                       model_object=model_object, test_size=test_size)
 
     #Tren ny modell på hele datasettet for fremtidsprediksjon
-    model_full = clone(model_objekt) # kopi med samme innstillinger
-    model_full = tren_modell(df, target_col, features, model_full)
+    model_full = clone(model_object) # kopi med samme innstillinger
+    model_full = train_model(df, target_col, features, model_full)
 
     #Prediker fremtid
-    df_fremtid = prediker_fremtid(df, model_full, features, target_col, antall_dager)
+    df_fremtid = predict_feature_values(df, model_full, features, target_col, num_days)
 
     #Visualiser historikk + fremtid
-    plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, dekningsgrad)
+    plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_fremtid, target_col, coverage)
 
 
-def vis_koeffisienter_linærmodell(df, features, target_cols, datokolonne="Dato"):
+def plot_linear_model_coefficients(df, features, target_cols, date_col="Dato"):
     """
     Viser koeffisienter fra lineær regresjon for hver target-kolonne.
 
@@ -319,45 +442,54 @@ def vis_koeffisienter_linærmodell(df, features, target_cols, datokolonne="Dato"
         features (list of str): Liste over inputvariabler.
         target_cols (list of str): Liste over målvariabler som skal evalueres.
         datokolonne (str): Navn på datokolonnen for sesongfeature-generering.
+    
+    Returns:
+        None: Viser et stolpediagram for hver target-kolonne med koeffisienter.
     """
-    df = legg_til_sesongvariabler(df, datokolonne)
+
+
+    df = add_seasonal_features(df, date_col)
 
     for target in target_cols:
-        f_clean = [f for f in features if f != target]
-
-        model = tren_modell(df, target, f_clean, LinearRegression())
-
-        # Hent og vis koeffisienter
-        coeffs = pd.Series(model.coef_, index=f_clean)
-
-        coeffs.plot(kind="bar", title=f"Koeffisienter for {target}", color="skyblue")
-        plt.ylabel("Koeffisient")
+        model = train_model(df, target, [f for f in features if f != target], LinearRegression())
+        coeffs = pd.Series(model.coef_, index=[f for f in features if f != target])
+        coeffs.plot(kind="bar", title=f"Coefficients for {target}", color="skyblue")
+        plt.ylabel("Coefficient value")
         plt.tight_layout()
         plt.show()
 
-def plot_polynomregresjon(X, y, grader, feature, target_col):
+    
+def plot_polynomial_regression(X, y, level, feature, target_col):
     """
     Lager et scatterplot og polynomkurver for gitt X og y.
 
     Args:
         X (np.ndarray): Inputvariabel (1D array).
         y (np.ndarray): Målvariabel.
-        grader (list): Grader av polynomer som skal tegnes.
-        feature (str): Navn på feature (for labels).
-        target_col (str): Navn på target (for labels).
+        level (list): Grader av polynomer som skal tegnes (f.eks. [1, 2, 3]).
+        feature (str): Navn på inputvariabelen (for akselabel).
+        target_col (str): Navn på målvariabelen (for akselabel).
+
+    Returns:
+        None. Viser en matplotlib-figur med scatterplot og regresjonslinjer.
     """
+   
+    # Lag en jevn fordeling av X-verdier til prediksjonslinjene
     x_range = np.linspace(X.min(), X.max(), 300)
 
     plt.figure(figsize=(10, 5))
     plt.scatter(X, y, s=10, color="lightgray", label="Faktiske data")
 
-    for deg in grader:
-        model = np.poly1d(np.polyfit(X, y, deg))
+    for lev in level:
+        # Tren og bruk polynommodell
+        model = np.poly1d(np.polyfit(X, y, lev))
         y_pred = model(X)
         r2 = r2_score(y, y_pred)
-        plt.plot(x_range, model(x_range), label=f"{deg}. grad (R²={r2:.3f})")
-    
 
+        # Tegn regresjonslinje med R²-score i label
+        plt.plot(x_range, model(x_range), label=f"{lev}. grad (R²={r2:.3f})")
+
+    # Formatering av plottet
     plt.xlabel(feature)
     plt.ylabel(target_col)
     plt.title(f"Polynomregresjon: {feature} → {target_col}")
@@ -366,7 +498,8 @@ def plot_polynomregresjon(X, y, grader, feature, target_col):
     plt.tight_layout()
     plt.show()
 
-def vis_polynomregresjon_for_feature(df, feature, target_col, grader=[1, 2, 3], datokolonne="Dato"):
+
+def visualize_polynomial_fit_for_feature(df, feature, target_col, level=[1, 2, 3], date_col="Dato"):
     """
     Viser polynomregresjon mellom én feature og target med ulike grader.
 
@@ -374,12 +507,14 @@ def vis_polynomregresjon_for_feature(df, feature, target_col, grader=[1, 2, 3], 
         df (pd.DataFrame): Datasettet.
         feature (str): Navnet på inputvariabelen (X).
         target_col (str): Navnet på målvariabelen (y).
-        grader (list): Liste over grader som skal vises (default: [1, 2, 3]).
-        datokolonne (str): Dato-kolonnen som brukes i sesongtransformasjon.
+        level (list): Liste over grader som skal vises (default: [1, 2, 3]).
+        date_col (str): Dato-kolonnen som brukes i sesongtransformasjon.
+    Returns:
+        None. Displays a matplotlib plot showing polynomial fits.
     """
     df = df.copy()
-    df = legg_til_sesongvariabler(df, datokolonne)
+    df = add_seasonal_features(df, date_col)
     X = df[feature].values
     y = df[target_col].values
 
-    plot_polynomregresjon(X, y, grader, feature, target_col)
+    plot_polynomial_regression(X, y, level, feature, target_col)
