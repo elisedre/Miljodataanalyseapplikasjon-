@@ -279,9 +279,6 @@ def predict_feature_values(df, model, features, target_col, num_days, date_col="
 
     return df_future[[date_col, f"predicted_{target_col}"]]
 
-    
-
-
 
 def plot_prediksjon_interaktiv(y_train, y_test, y_pred, df_future, target_col, coverage=None):
     """
@@ -393,7 +390,6 @@ def evaluate_and_train_model(df, target_col, features, model_object, test_size=0
     return y_train, y_test, y_pred
 
     
-
 def prediction_with_futurevalues(df, target_col, features, model_object,
                                       num_days=365, test_size=0.2, coverage=None):
     """
@@ -463,7 +459,6 @@ def plot_linear_model_coefficients(df, features, target_cols, date_col="Dato"):
         plt.show()
 
     
-
 def plot_polynomial_regression(X, y, level, feature, target_col):
     """
     Lager et scatterplot og polynomkurver for gitt X og y.
@@ -502,7 +497,6 @@ def plot_polynomial_regression(X, y, level, feature, target_col):
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
-
 
 
 def visualize_polynomial_fit_for_feature(df, feature, target_col, level=[1, 2, 3], date_col="Dato"):
