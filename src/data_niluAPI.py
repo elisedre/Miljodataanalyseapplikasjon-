@@ -105,6 +105,35 @@ def get_raw_data_niluAPI():
     processed_data = process_raw_data(raw_data)
     save_to_json(processed_data, output_file)
 
+def check_and_clean_nilu_duplicates():
+    from data_frostAPI import print_duplicate_dates, remove_duplicate_dates
+    filepath = "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    """
+    Leser data fra Nilu API JSON-fil, viser duplikater, fjerner dem og returnerer en renset DataFrame.
+
+    Args:
+        filepath (str): Filsti til Nilu-data i JSON-format.
+
+    Returns:
+        pd.DataFrame: Renset DataFrame uten duplikat-datoer.
+    """
+    df = pd.read_json(filepath)
+    
+    print("Før opprydding:")
+    print_duplicate_dates(df)
+
+    remove_duplicate_dates(df)
+
+def analyze_outliers_nilu():
+    """
+    Leser Frost API-data fra en JSON-fil, analyserer og visualiserer outliers.
+    """
+    from data_frostAPI import analyze_and_plot_outliers
+    df_frost = pd.read_json("../../data/raw_data/raw_air_quality_nilu_oslo.json")
+    variables = ['Verdi_NO2', 'Verdi_SO2', 'Verdi_O3']
+    threshold = 3
+
+    analyze_and_plot_outliers(df_frost, variables, threshold)    
 
 def remove_outliers(raw_data_file, cols, threshold=3):
     """
@@ -119,6 +148,7 @@ def remove_outliers(raw_data_file, cols, threshold=3):
     Returns:
         pd.DataFrame: DataFrame med fjernet outliers (NaN), eller tom DataFrame ved feil.
     """
+    from data_frostAPI import visualize_missing_data_missingno
     try:
         pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
@@ -150,6 +180,8 @@ def remove_outliers(raw_data_file, cols, threshold=3):
         
         # Sett outliers til NaN
         pivot_df.loc[is_outlier, col] = np.nan
+
+        visualize_missing_data_missingno(pivot_df)
 
     return pivot_df
 

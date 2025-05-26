@@ -228,28 +228,27 @@ def plot_outlier_distribution(df, variable, lower_limit, upper_limit):
     plt.show()
 
 
-def visualize_missing_data_missingno():
+def visualize_missing_data_missingno(df_or_path):
     """
-    Leser inn værdata fra JSON og visualiserer manglende verdier per kolonne.
+    Visualiserer manglende verdier i værdata med missingno.
 
-    Viser:
-    - Antall manglende verdier per kolonne
-    - Visualisering med missingno
-    - Valgfri fremheving i plott (kan utvides)
+    Args:
+        df_or_path (str eller pd.DataFrame): Filsti til JSON-data ELLER en DataFrame.
     """
-    # Les inn data
-    df_frost = pd.read_json("../../data/raw_data/frostAPI_data.json")
+    if isinstance(df_or_path, str):
+        df = pd.read_json(df_or_path, orient="records", encoding="utf-8")
+    elif isinstance(df_or_path, pd.DataFrame):
+        df = df_or_path.copy()
+    else:
+        raise ValueError("Input må være en filsti (str) eller en pandas DataFrame.")
 
-    # Antall manglende verdier
-    print("Antall manglende verdier per kolonne:")
-    print(df_frost.isna().sum())
 
-    # Visualisering med missingno (varme og tetthet)
-    msno.matrix(df_frost)
+    msno.matrix(df)
     plt.title("Visualisering av manglende data (missingno.matrix)")
     plt.show()
+
     
-import pandas as pd
+
 
 def print_duplicate_dates(df):
     """
@@ -273,7 +272,8 @@ def print_duplicate_dates(df):
 
 def remove_duplicate_dates(df):
     """
-    Fjerner duplikater basert på 'Dato' og returnerer en renset DataFrame. Fjerner den andre duplikaten.
+    Fjerner duplikater basert på 'Dato' og returnerer en renset DataFrame. 
+    Fjerner den andre duplikaten.
 
     Args:
         df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
@@ -284,7 +284,16 @@ def remove_duplicate_dates(df):
     if 'Dato' not in df.columns:
         raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
 
+    original_len = len(df)
     df_cleaned = df.drop_duplicates(subset='Dato', keep='first').copy()
+    cleaned_len = len(df_cleaned)
+
+    print("\nEtter fjerning av duplikater:")
+    if original_len == cleaned_len:
+        print("Ingen duplikater ble funnet. Ingen rader fjernet.")
+    else:
+        print(f"Rader igjen i datasettet: {cleaned_len} (fjernet {original_len - cleaned_len} duplikat(er))")
+
     return df_cleaned
 
 def check_and_clean_frost_duplicates():
@@ -303,12 +312,8 @@ def check_and_clean_frost_duplicates():
     print("Før opprydding:")
     print_duplicate_dates(df)
 
-    df_cleaned = remove_duplicate_dates(df)
+    remove_duplicate_dates(df)
 
-    print("\nEtter fjerning av duplikater:")
-    print(f"Rader igjen i datasettet: {len(df_cleaned)}")
-    
-    return df_cleaned
  
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
@@ -322,7 +327,7 @@ def analyze_and_plot_outliers(df, variables, threshold=3):
     """
     for var in variables:
         lower_limit, upper_limit = calculate_outlier_limits(df, var, threshold)
-        outliers = df[~df[var].between(lower_limit, upper_limit)]
+        outliers = df[df[var].notna() & ~df[var].between(lower_limit, upper_limit)]
         print(f"\nOutliers for {var}: {outliers.shape[0]}")
 
         plot_outlier_distribution(df, var, lower_limit, upper_limit)
@@ -341,7 +346,7 @@ def analyze_frost_data():
 
 def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
     """
-    Setter verdiene som mangler målinger fra til Nan, og interpolerer alle NaN-verdier med linær metode. 
+    Setter verdiene som mangler målinger til Nan, og interpolerer alle NaN-verdier med linær metode. 
     Lagre den rensede dataen som en JSON-fil.
 
     Args:
