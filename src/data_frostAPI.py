@@ -407,8 +407,6 @@ def fix_skewness_data_frostAPI():
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nTransformert data lagret i {analyzed_data_file}")
 
-
-
 def get_season(date):
     """
     Bestemmer hvilken sesong en gitt dato tilhører.
@@ -417,8 +415,7 @@ def get_season(date):
     - date (datetime): En dato i datetime-format.
 
     Returns:
-    - str: Navnet på sesongen ('Vår', 'Sommer', 'Høst', 'Vinter') som datoen tilhører.
-
+    - str: Navnet på sesongen ('Vår', 'Sommer', 'Høst', 'Vinter').
     """
     if date.month in [3, 4, 5]:
         return 'Vår'
@@ -430,39 +427,44 @@ def get_season(date):
         return 'Vinter'
 
 
-def calculate_and_plot_seasonal_bars(data):
+def calculate_seasonal_stats(data):
     """
-    Beregner og visualiserer gjennomsnittlig temperatur og nedbør per sesong per år
-    i form av søylediagrammer.
+    Legger til sesong og år, og beregner gjennomsnitt og standardavvik for temperatur og nedbør per sesong per år.
 
     Args:
-    - data: DataFrame med minst kolonnene 'Dato', 'Temperatur', og 'Nedbør'.
-    - sesonger: Liste med sesonger å vise (f.eks. ['Vår', 'Sommer']), eller None for å vise alle.
+    - data (DataFrame): Data med kolonnene 'Dato', 'Temperatur', og 'Nedbør'.
 
+    Returns:
+    - DataFrame: Aggregert statistikk per sesong og år.
     """
-
-    # Konverter og legg til sesong og år
     data['Dato'] = pd.to_datetime(data['Dato'])
-
     data['Sesong'] = data['Dato'].apply(get_season)
     data['År'] = data['Dato'].dt.year
 
-    # Grupperer data etter år og sesong
-    season_stats = data.groupby(['År', 'Sesong']).agg({
+    stats = data.groupby(['År', 'Sesong']).agg({
         'Temperatur': ['mean', 'std'],
         'Nedbør': ['mean', 'std']
     }).reset_index()
 
-    season_stats.columns = [
+    stats.columns = [
         'År', 'Sesong',
         'Temperatur_Gjennomsnitt', 'Temperatur_Std',
         'Nedbør_Gjennomsnitt', 'Nedbør_Std'
     ]
+    return stats
 
+
+def plot_seasonal_bars(stats_df):
+    """
+    Visualiserer gjennomsnittlig temperatur og nedbør per sesong per år.
+
+    Args:
+    - stats_df (DataFrame): Dataframe med kolonner som inneholder aggregerte verdier per sesong og år.
+    """
     sesonger = ['Vår', 'Sommer', 'Høst', 'Vinter']
 
     for sesong in sesonger:
-        data_sesong = season_stats[season_stats['Sesong'] == sesong]
+        data_sesong = stats_df[stats_df['Sesong'] == sesong]
 
         if data_sesong.empty:
             print(f"Ingen data for sesongen: {sesong}")
@@ -470,8 +472,9 @@ def calculate_and_plot_seasonal_bars(data):
 
         # Temperatur søylediagram
         plt.figure(figsize=(10, 5))
-        plt.bar(data_sesong['År'], data_sesong['Temperatur_Gjennomsnitt'], yerr=data_sesong['Temperatur_Std'],
-                capsize=5, color='salmon', label='Temperatur')
+        plt.bar(data_sesong['År'], data_sesong['Temperatur_Gjennomsnitt'],
+                yerr=data_sesong['Temperatur_Std'], capsize=5,
+                color='salmon', label='Temperatur')
         plt.title(f"Gjennomsnittstemperatur per år – {sesong}")
         plt.xlabel("År")
         plt.ylabel("Temperatur (°C)")
@@ -481,8 +484,9 @@ def calculate_and_plot_seasonal_bars(data):
 
         # Nedbør søylediagram
         plt.figure(figsize=(10, 5))
-        plt.bar(data_sesong['År'], data_sesong['Nedbør_Gjennomsnitt'], yerr=data_sesong['Nedbør_Std'],
-                capsize=5, color='skyblue', label='Nedbør')
+        plt.bar(data_sesong['År'], data_sesong['Nedbør_Gjennomsnitt'],
+                yerr=data_sesong['Nedbør_Std'], capsize=5,
+                color='skyblue', label='Nedbør')
         plt.title(f"Gjennomsnittsnedbør per år – {sesong}")
         plt.xlabel("År")
         plt.ylabel("Nedbør (mm)")
@@ -494,19 +498,13 @@ def calculate_and_plot_seasonal_bars(data):
 def load_and_plot_frost_seasonal_data():
     """
     Leser inn meteorologiske data fra en JSON-fil og visualiserer gjennomsnittlig
-    temperatur og nedbør per sesong per år med `calculate_and_plot_seasonal_bars`.
-
-    Args:
-    - filepath (str): Sti til JSON-filen som inneholder dataen.
-
+    temperatur og nedbør per sesong per år.
     """
-    # Lese JSON-filen
     with open("../../data/clean_data/frostAPI_clean_data.json", "r", encoding="utf-8") as file:
         data = json.load(file)
 
-    # Konverter til DataFrame
     df = pd.DataFrame(data)
+    stats = calculate_seasonal_stats(df)
+    plot_seasonal_bars(stats)
 
-    # Kall på eksisterende funksjon for beregning og visualisering
-    calculate_and_plot_seasonal_bars(df)
 
