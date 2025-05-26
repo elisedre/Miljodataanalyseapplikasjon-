@@ -312,52 +312,35 @@ def fix_skewness_data_niluAPI():
     except Exception as e:
         print(f"Feil ved lagring av transformert data: {e}")
 
-
-
-def plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolonne="Dato"):
+def plot_air_quality(df, verdi_kolonner, titler, fargekolonne, tidskolonne="Dato"):
     """
-    Lager separate figurer for hver verdi og fargekodede punkter for datakvalitet.
+    Lager separate figurer for hver verdi og fargekodede punkter.
 
     Parametre:
-        df: DataFrame med miljødata
-        verdi_kolonner: Liste med kolonnene som skal plottes (f.eks. ['Verdi_NO2', 'Verdi_O3', 'Verdi_SO2'])
-        dekningsgrad_kolonner: Liste med kolonner som skal brukes til å vurdere datakvalitet (f.eks. ['Dekningsgrad_NO2'])
-        titler: Liste med titler for hver kolonne
-        tidskolonne: Kolonnen som inneholder dato/tid (default 'Dato')
+        df: DataFrame med miljødata.
+        verdi_kolonner: Liste med kolonner som skal plottes.
+        titler: Liste med titler for hver graf.
+        fargekolonne: Navn på kolonne med fargekoder.
+        tidskolonne: Tid/dato-kolonne (default 'Dato').
     """
-    
     df[tidskolonne] = pd.to_datetime(df[tidskolonne])
 
-    def get_color(row):
-        if not row['Dekningsgrad_NO2'] or not row['Dekningsgrad_O3'] or not row['Dekningsgrad_SO2']:
-            return 'red'  # Interpolerte verdier
-        elif row['Dekningsgrad_NO2'] < 90 or row['Dekningsgrad_O3'] < 90 or row['Dekningsgrad_SO2'] < 90:
-            return 'yellow'  # Dekningsgrad < 90
-        else:
-            return 'green'  # Dekningsgrad >= 90
-
-    df['color'] = df.apply(get_color, axis=1)
-
-    # Lager en figur per verdi-kolonne
     for i, verdi_kolonne in enumerate(verdi_kolonner):
         fig = go.Figure()
 
-        
         fig.add_trace(go.Scatter(
             x=df[tidskolonne], y=df[verdi_kolonne], mode='markers',
-            marker=dict(color=df['color'], size=6),
+            marker=dict(color=df[fargekolonne], size=6),
             name=f'Datapunkter for {titler[i]}'
         ))
 
-        # Legg til trendlinje
         fig.add_trace(go.Scatter(
             x=df[tidskolonne], y=df[verdi_kolonne], mode='lines',
             line=dict(color='blue', width=1), name=f'Trend for {titler[i]}'
         ))
 
-        # Oppdater layout for hver figur
         fig.update_layout(
-            title=titler[i],  # Bruker tittel per graf
+            title=titler[i],
             xaxis_title="Dato",
             yaxis_title=f'Verdi ({verdi_kolonne})',
             width=1000,
@@ -366,26 +349,29 @@ def plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolo
 
         fig.show()
 
-
 def load_and_plot_air_quality():
     """
-    Leser luftkvalitetsdata fra JSON og kaller `plot_air_quality` med riktige kolonner og titler.
-    Bruker generelle funksjonen `plot_air_quality`.
-
+    Leser luftkvalitetsdata og kaller `plot_air_quality` med riktige parametere.
+    Ansvarlig for å bestemme fargekoding basert på datakvalitet.
     """
-
     with open("../../data/clean_data/niluAPI_clean_data.json", "r", encoding="utf-8") as file:
         data = json.load(file)
 
     df = pd.DataFrame(data)
 
-    # Definer hvilke kolonner som skal plottes og vurderes
     verdi_kolonner = ['Verdi_NO2', 'Verdi_O3', 'Verdi_SO2']
     dekningsgrad_kolonner = ['Dekningsgrad_NO2', 'Dekningsgrad_O3', 'Dekningsgrad_SO2']
     titler = ['Verdi NO2 over tid', 'Verdi O3 over tid', 'Verdi SO2 over tid']
 
-    # Kjør plot-funksjonen
-    plot_air_quality(df, verdi_kolonner, dekningsgrad_kolonner, titler, tidskolonne="Dato")
+    # Lager ny kolonne for fargekoding
+    def get_color(row):
+        for col in dekningsgrad_kolonner:
+            if pd.isna(row[col]) or not row[col]:
+                return 'red'
+            if row[col] < 90:
+                return 'yellow'
+        return 'green'
 
+    df['farge'] = df.apply(get_color, axis=1)
 
-
+    plot_air_quality(df, verdi_kolonner, titler, fargekolonne='farge', tidskolonne="Dato")
