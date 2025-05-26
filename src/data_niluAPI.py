@@ -105,6 +105,26 @@ def get_raw_data_niluAPI():
     processed_data = process_raw_data(raw_data)
     save_to_json(processed_data, output_file)
 
+def check_and_clean_nilu_duplicates():
+    from data_frostAPI import print_duplicate_dates, remove_duplicate_dates
+    filepath = "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    """
+    Leser data fra Nilu API JSON-fil, viser duplikater, fjerner dem og returnerer en renset DataFrame.
+
+    Args:
+        filepath (str): Filsti til Nilu-data i JSON-format.
+
+    Returns:
+        pd.DataFrame: Renset DataFrame uten duplikat-datoer.
+    """
+    df = pd.read_json(filepath)
+    
+    print("Før opprydding:")
+    print_duplicate_dates(df)
+
+    remove_duplicate_dates(df)
+
+    
 
 def remove_outliers(raw_data_file, cols, threshold=3):
     """

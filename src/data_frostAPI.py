@@ -274,7 +274,8 @@ def print_duplicate_dates(df):
 
 def remove_duplicate_dates(df):
     """
-    Fjerner duplikater basert på 'Dato' og returnerer en renset DataFrame. Fjerner den andre duplikaten.
+    Fjerner duplikater basert på 'Dato' og returnerer en renset DataFrame. 
+    Fjerner den andre duplikaten.
 
     Args:
         df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
@@ -285,7 +286,16 @@ def remove_duplicate_dates(df):
     if 'Dato' not in df.columns:
         raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
 
+    original_len = len(df)
     df_cleaned = df.drop_duplicates(subset='Dato', keep='first').copy()
+    cleaned_len = len(df_cleaned)
+
+    print("\nEtter fjerning av duplikater:")
+    if original_len == cleaned_len:
+        print("Ingen duplikater ble funnet. Ingen rader fjernet.")
+    else:
+        print(f"Rader igjen i datasettet: {cleaned_len} (fjernet {original_len - cleaned_len} duplikat(er))")
+
     return df_cleaned
 
 def check_and_clean_frost_duplicates():
@@ -304,12 +314,8 @@ def check_and_clean_frost_duplicates():
     print("Før opprydding:")
     print_duplicate_dates(df)
 
-    df_cleaned = remove_duplicate_dates(df)
+    remove_duplicate_dates(df)
 
-    print("\nEtter fjerning av duplikater:")
-    print(f"Rader igjen i datasettet: {len(df_cleaned)}")
-    
-    return df_cleaned
  
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
