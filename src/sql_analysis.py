@@ -4,6 +4,23 @@ import matplotlib.pyplot as plt
 import json
 import seaborn as sns 
 
+def load_clean_data(filepath="../../data/clean_data/frostAPI_clean_data.json"):
+    """
+    Leser inn rengjorte værdata fra angitt JSON-fil.
+
+    Args:
+        filepath (str): Filsti til JSON-data.
+
+    Returns:
+        pd.DataFrame: DataFrame med værdata, eller tom hvis feil oppstår.
+    """
+    try:
+        df = pd.read_json(filepath)
+        return df
+    except Exception as e:
+        print(f"Feil ved lesing av fil '{filepath}': {e}")
+        return pd.DataFrame()
+    
 def analyze_hottest_days(df, date_col, temp_col, precip_col, n_days):
     """
     Analyserer de varmeste dagene basert på temperatur, visualiserer sammenhengen 
@@ -78,15 +95,9 @@ def analyze_frost_api_clean_data():
     Returns:
         pd.DataFrame: DataFrame med de varmeste dagene.
     """
-    # Rengjorte data fra Frost API
-    file_path = "../../data/clean_data/frostAPI_clean_data.json"
-
-    try:
-        # Leser JSON-filen til en DataFrame
-        df = pd.read_json(file_path)
-    except Exception as e:
-        print(f"Feil ved lesing av fil '{file_path}': {e}")
-        return pd.DataFrame()
+    df = load_clean_data()
+    if df.empty:
+        return df
 
     # Kaller analysefunksjonen med relevante kolonnenavn
     return analyze_hottest_days(
@@ -158,14 +169,9 @@ def analyze_coldest_frost_api_data():
         pd.DataFrame: DataFrame med de kaldeste dagene og tilhørende år.
     """
     # Rengjorte data fra Frost API
-    file_path = "../../data/clean_data/frostAPI_clean_data.json"
-
-    try:
-        # Leser JSON-filen til en DataFrame
-        df = pd.read_json(file_path)
-    except Exception as e:
-        print(f"Feil ved lesing av fil '{file_path}': {e}")
-        return pd.DataFrame()
+    df = load_clean_data()
+    if df.empty:
+        return df
     
     # Kaller analysefunksjonen med relevante kolonnenavn
     return analyze_coldest_days(
@@ -228,15 +234,9 @@ def analyze_avg_temp_frost_api_data():
     Returns:
         pd.DataFrame: DataFrame med gjennomsnittlig temperatur per år.
     """
-    # Rengjorte data fra Frost API
-    file_path = "../../data/clean_data/frostAPI_clean_data.json"
-
-    try:
-        # Leser JSON-filen til en DataFrame
-        df = pd.read_json(file_path)
-    except Exception as e:
-        print(f"Feil ved lesing av fil '{file_path}': {e}")
-        return pd.DataFrame()
+    df = load_clean_data()
+    if df.empty:
+        return df
 
     # Kaller analysefunksjonen med relevante kolonnenavn
     return analyze_avg_temperature_per_year(
@@ -307,15 +307,9 @@ def analyze_weekly_avg_frost_api_data():
     Returns:
         pd.DataFrame: DataFrame med ukentlig gjennomsnitt for nedbør, temperatur og vindhastighet.
     """
-    # Rengjorte data fra Frost API
-    file_name = "../../data/clean_data/frostAPI_clean_data.json"
-
-    try:
-        # Leser JSON-filen til en DataFrame
-        df = pd.read_json(file_name)
-    except Exception as e:
-        print(f"Feil ved lesing av fil: {e}")
-        return pd.DataFrame()
+    df = load_clean_data()
+    if df.empty:
+        return df
     
     # Kaller analysefunksjonen med relevante kolonnenavn
     return analyze_weekly_avg_data(
@@ -368,15 +362,9 @@ def calculate_std_frost_data():
     Returns:
         pd.DataFrame: DataFrame med standardavvik for nedbør, temperatur og vindhastighet.
     """
-    # Rengjorte data fra Frost API
-    file_path = "../../data/clean_data/frostAPI_clean_data.json"
-    
-    try:
-        # Leser JSON-filen til en DataFrame
-        df = pd.read_json(file_path)
-    except Exception as e:
-        print(f"Feil ved lesing av data: {e}")
-        return pd.DataFrame()
+    df = load_clean_data()
+    if df.empty:
+        return df
 
     # Kaller den generelle funksjonen for å beregne standardavvik
     return calculate_std_dev(df, "Nedbør", "Temperatur", "Vindhastighet")
@@ -418,15 +406,9 @@ def calculate_std_frost_weekly():
     Returns:
         pd.DataFrame: DataFrame med ukentlig standardavvik for nedbør, temperatur og vindhastighet.
     """
-    # Rengjorte data fra Frost API
-    file_path = "../../data/clean_data/frostAPI_clean_data.json"
-    
-    try:
-        # Leser JSON-filen til en DataFrame
-        df = pd.read_json(file_path)
-    except Exception as e:
-        print(f"Feil ved lesing av data: {e}")
-        return pd.DataFrame()
+    df = load_clean_data()
+    if df.empty:
+        return df
 
     # Kaller den generelle funksjonen for å beregne ukentlig standardavvik
     return calculate_weekly_std_dev(
@@ -522,27 +504,23 @@ def analyze_correlation_between_weather_and_air_quality(
 
 def analyze_frost_nilu():
     """
-    Leser inn rengjorte værdata fra frostAPI og luftkvalitetsdata fra niluAPI, og
-    analyserer korrelasjonen mellom værdata og luftkvalitetsdata ved å kalle den generelle 
-    funksjonen "analyze_correlation_between_weather_and_air_quality".
+    Leser inn rengjorte værdata fra frostAPI og luftkvalitetsdata fra niluAPI,
+    og analyserer korrelasjonen mellom disse ved å bruke funksjonen 
+    'analyze_correlation_between_weather_and_air_quality'.
 
     Returns:
-        tuple: Resultater fra SQL-spørringer og korrelasjonsberegninger.
+        tuple: Resultater fra korrelasjonsanalyse.
     """
-    try:
-        # Leser inn rengjorte data fra Frost API og NILU API
-        with open("../data/clean_data/frostAPI_clean_data.json", "r") as frost_file, \
-            open("../data/clean_data/niluAPI_clean_data.json", "r") as nilu_file:
-            data_frost = json.load(frost_file)
-            data_nilu = json.load(nilu_file)
-        # Konverterer JSON-data til DataFrames
-        df_frost = pd.json_normalize(data_frost) 
-        df_nilu = pd.json_normalize(data_nilu)
-    except Exception as e:
-        print(f"Feil ved lesing av data: {e}")
+    # Leser inn ferdig rensede data ved hjelp av gjenbrukbar funksjon
+    df_frost = load_clean_data("../data/clean_data/frostAPI_clean_data.json")
+    df_nilu = load_clean_data("../data/clean_data/niluAPI_clean_data.json")
+
+    # Sjekk om dataene er lastet inn riktig
+    if df_frost.empty or df_nilu.empty:
+        print("En eller begge DataFrames er tomme. Avbryter analyse.")
         return None, None
 
-    # Kaller den generelle funksjonen for å analysere korrelasjon mellom vær- og luftkvalitetsdata
+    # Kjør korrelasjonsanalyse
     return analyze_correlation_between_weather_and_air_quality(
         df_frost, df_nilu,
         date="Dato",
@@ -551,6 +529,7 @@ def analyze_frost_nilu():
         weather2="Vindhastighet",
         airquality2="Verdi_NO2"
     )
+
 
 def analyze_monthly_avg_pollution_data(df, date_col, no2_col, o3_col, so2_col):
     """
@@ -625,12 +604,9 @@ def analyze_monthly_avg_nilu_data():
     # Rengjorte data fra NILU API
     file_path = "../../data/clean_data/niluAPI_clean_data.json"
 
-    try:
-        # Leser inn JSON-fil til DataFrame
-        df = pd.read_json(file_path)
-    except Exception as e:
-        print(f"Feil ved lesing av NILU-data: {e}")
-        return None
+    df = load_clean_data(file_path)
+    if df.empty:
+        return df
 
     # Kaller funksjonen for å beregne og visualisere månedlig gjennomsnitt
     return analyze_monthly_avg_pollution_data(
