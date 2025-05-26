@@ -251,42 +251,44 @@ def visualize_missing_data_missingno(df_or_path):
 
     
 
-
-def print_duplicate_dates(df):
+def print_duplicate_rows(df, subset_cols):
     """
-    Skriver ut informasjon om dupliserte datoer i en DataFrame.
+    Skriver ut informasjon om dupliserte rader basert på angitte kolonner.
 
     Args:
-        df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
+        df (pd.DataFrame): DataFrame som skal sjekkes.
+        subset_cols (list): Liste over kolonner som skal brukes for duplikatsjekk.
+    
+    Returns:
+        None: Skriver ut antall duplikater og duplikatrader.
     """
-    if 'Dato' not in df.columns:
-        raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
+    if not all(col in df.columns for col in subset_cols):
+        raise ValueError(f"Alle kolonner i {subset_cols} må finnes i DataFrame.")
 
-    duplicate_dates = df[df.duplicated(subset='Dato', keep=False)]
-    grouped = duplicate_dates.groupby('Dato').size()
-
-    if grouped.empty:
-        print("Ingen dupliserte datoer funnet.")
+    duplicates = df[df.duplicated(subset=subset_cols, keep=False)]
+    
+    if duplicates.empty:
+        print(f"Ingen duplikater funnet basert på kolonner: {subset_cols}")
     else:
-        print(f"Antall unike duplikatdatoer: {grouped.shape[0]}")
-        for dato, antall in grouped.items():
-            print(f" - {dato.date()}: {antall} forekomster")
+        print(f"Totalt {len(duplicates)} duplikatrader basert på kolonner: {subset_cols}")
+        print(duplicates)
 
-def remove_duplicate_dates(df):
+def remove_duplicate_dates(df, subset=["Dato"]):
     """
-    Fjerner duplikater basert på 'Dato' og returnerer en renset DataFrame. 
-    Fjerner den andre duplikaten.
+    Fjerner duplikater basert på angitte kolonner (standard: kun 'Dato').
 
     Args:
-        df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
+        df (pd.DataFrame): DataFrame som må inneholde kolonnene i 'subset'.
+        subset (list): Kolonner som brukes for å identifisere duplikater.
 
     Returns:
-        pd.DataFrame: DataFrame uten duplikater på 'Dato'.
+        pd.DataFrame: DataFrame uten duplikater i angitt subset.
     """
-    if 'Dato' not in df.columns:
-        raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
+    for col in subset:
+        if col not in df.columns:
+            raise ValueError(f"DataFrame mangler nødvendig kolonne: {col}")
 
-    return df.drop_duplicates(subset='Dato', keep='first').copy()
+    return df.drop_duplicates(subset=subset, keep='first').copy()
 
 def check_and_clean_frost_duplicates():
     """
@@ -297,12 +299,13 @@ def check_and_clean_frost_duplicates():
     """
     filepath = "../../data/raw_data/frostAPI_data.json"
     df = pd.read_json(filepath)
+    subset_cols = ["Dato", "Stasjon"]
 
     print("Før opprydding:")
-    print_duplicate_dates(df)
+    print_duplicate_rows(df, subset_cols)
 
     original_len = len(df)
-    df_cleaned = remove_duplicate_dates(df)
+    df_cleaned = remove_duplicate_dates(df, subset=subset_cols)
     cleaned_len = len(df_cleaned)
 
     print("\nEtter fjerning av duplikater:")
