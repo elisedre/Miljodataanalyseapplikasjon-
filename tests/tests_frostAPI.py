@@ -8,7 +8,7 @@ from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.frostAPI.data_frostAPI import (
+from data_frostAPI import (
     fetch_data_from_frostAPI,
     process_weather_data,
     save_data_as_json,

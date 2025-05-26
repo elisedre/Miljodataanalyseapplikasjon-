@@ -274,7 +274,7 @@ def clean_data_frostAPI(threshold=3):
     to_date = "2016-12-31"
  
     # Fjern outliers fra rådataene
-    from niluAPI.data_niluAPI import remove_outliers
+    from data_niluAPI import remove_outliers
     pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
     
     # Sjekk om dataen ble lastet inn riktig og ikke er tom
