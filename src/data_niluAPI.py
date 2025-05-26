@@ -119,6 +119,7 @@ def remove_outliers(raw_data_file, cols, threshold=3):
     Returns:
         pd.DataFrame: DataFrame med fjernet outliers (NaN), eller tom DataFrame ved feil.
     """
+    from data_frostAPI import visualize_missing_data_missingno
     try:
         pivot_df = pd.read_json(raw_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
@@ -150,6 +151,8 @@ def remove_outliers(raw_data_file, cols, threshold=3):
         
         # Sett outliers til NaN
         pivot_df.loc[is_outlier, col] = np.nan
+
+        visualize_missing_data_missingno(pivot_df)
 
     return pivot_df
 

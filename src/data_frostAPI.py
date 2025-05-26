@@ -228,28 +228,29 @@ def plot_outlier_distribution(df, variable, lower_limit, upper_limit):
     plt.show()
 
 
-def visualize_missing_data_missingno():
+def visualize_missing_data_missingno(df_or_path):
     """
-    Leser inn værdata fra JSON og visualiserer manglende verdier per kolonne.
+    Visualiserer manglende verdier i værdata med missingno.
 
-    Viser:
-    - Antall manglende verdier per kolonne
-    - Visualisering med missingno
-    - Valgfri fremheving i plott (kan utvides)
+    Args:
+        df_or_path (str eller pd.DataFrame): Filsti til JSON-data ELLER en DataFrame.
     """
-    # Les inn data
-    df_frost = pd.read_json("../../data/raw_data/frostAPI_data.json")
+    if isinstance(df_or_path, str):
+        df = pd.read_json(df_or_path, orient="records", encoding="utf-8")
+    elif isinstance(df_or_path, pd.DataFrame):
+        df = df_or_path.copy()
+    else:
+        raise ValueError("Input må være en filsti (str) eller en pandas DataFrame.")
 
-    # Antall manglende verdier
     print("Antall manglende verdier per kolonne:")
-    print(df_frost.isna().sum())
+    print(df.isna().sum())
 
-    # Visualisering med missingno (varme og tetthet)
-    msno.matrix(df_frost)
+    msno.matrix(df)
     plt.title("Visualisering av manglende data (missingno.matrix)")
     plt.show()
+
     
-import pandas as pd
+
 
 def print_duplicate_dates(df):
     """
@@ -341,7 +342,7 @@ def analyze_frost_data():
 
 def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
     """
-    Setter verdiene som mangler målinger fra til Nan, og interpolerer alle NaN-verdier med linær metode. 
+    Setter verdiene som mangler målinger til Nan, og interpolerer alle NaN-verdier med linær metode. 
     Lagre den rensede dataen som en JSON-fil.
 
     Args:
