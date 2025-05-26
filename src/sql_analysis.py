@@ -236,8 +236,6 @@ def analyze_avg_temp_frost_api_data():
         temp_col="Temperatur"
     )
 
-
-
 def analyze_weekly_avg_data(df, date, precip, temp, wind):
     """
     Beregner og visualiserer ukentlig gjennomsnitt for nedbør, temperatur og vindhastighet basert på værdata.
@@ -257,36 +255,38 @@ def analyze_weekly_avg_data(df, date, precip, temp, wind):
     df['Uke'] = pd.to_datetime(df[date]).dt.strftime('%Y-U%U')
 
     # SQL-spørring for å beregne gjennomsnitt per uke
-    query = f"""
-        SELECT
-            Uke,
-            AVG({precip}) AS Avg_Nedbør,
-            AVG({temp}) AS Avg_Temperatur,
-            AVG({wind}) AS Avg_Vindhastighet
-        FROM df
-        GROUP BY Uke
-        ORDER BY Uke
-    """
-    result = psql.sqldf(query, locals())
+    try:
+        query = f"""
+            SELECT
+                Uke,
+                AVG({precip}) AS Avg_Nedbør,
+                AVG({temp}) AS Avg_Temperatur,
+                AVG({wind}) AS Avg_Vindhastighet
+            FROM df
+            GROUP BY Uke
+            ORDER BY Uke
+        """
+        result = psql.sqldf(query, locals())
+    except Exception as e:
+        print(f"Feil under SQL-spørring: {e}")
+        return pd.DataFrame()
+    
+    try:
+        plt.figure(figsize=(14, 7))
+        plt.plot(result['Uke'], result['Avg_Temperatur'], label='Temperatur (°C)', color='red', marker='o')
+        plt.plot(result['Uke'], result['Avg_Nedbør'], label='Nedbør (mm)', color='blue', marker='s')
+        plt.plot(result['Uke'], result['Avg_Vindhastighet'], label='Vindhastighet (m/s)', color='green', marker='^')
 
-    # Plotter resultatet 
-    plt.figure(figsize=(14, 7))
-
-    # Plot temperatur (rød)
-    plt.plot(result['Uke'], result['Avg_Temperatur'], label='Temperatur (°C)', color='red', marker='o')
-    # Plot nedbør (blå)
-    plt.plot(result['Uke'], result['Avg_Nedbør'], label='Nedbør (mm)', color='blue', marker='s')
-    # Plot vindhastighet (grønn)
-    plt.plot(result['Uke'], result['Avg_Vindhastighet'], label='Vindhastighet (m/s)', color='green', marker='^')
-
-    plt.xlabel('Uke')
-    plt.ylabel('Gjennomsnitt per uke')
-    plt.title('Gjennomsnittlig Nedbør, Temperatur og Vindhastighet per uke')
-    plt.xticks(result['Uke'][::24], rotation=45)
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+        plt.xlabel('Uke')
+        plt.ylabel('Gjennomsnitt per uke')
+        plt.title('Gjennomsnittlig Nedbør, Temperatur og Vindhastighet per uke')
+        plt.xticks(result['Uke'][::24], rotation=45)
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+    except Exception as e:
+        print(f"Feil ved visualisering: {e}")
 
     return result
 
@@ -298,9 +298,14 @@ def analyze_weekly_avg_frost_api_data():
     Returns:
         pd.DataFrame: DataFrame med ukentlig gjennomsnitt for nedbør, temperatur og vindhastighet.
     """
-    
     file_name = "../../data/clean_data/frostAPI_clean_data.json"
-    df = pd.read_json(file_name)
+
+    try:
+        df = pd.read_json(file_name)
+    except Exception as e:
+        print(f"Feil ved lesing av fil: {e}")
+        return pd.DataFrame()
+    
     return analyze_weekly_avg_data(
         df,
         date="Dato",
