@@ -4,76 +4,97 @@ import matplotlib.pyplot as plt
 import json
 import seaborn as sns 
 
-def analyze_hottest_days(df, date, temp, precip, n_days):
+def analyze_hottest_days(df, date_col, temp_col, precip_col, n_days):
     """
     Analyserer de varmeste dagene basert på temperatur, visualiserer sammenhengen 
-    med nedbør, og lager et kakediagram for å vise fordeling på år.
+    med nedbør og lager et kakediagram for fordeling per år.
 
     Args:
         df (pd.DataFrame): DataFrame med værdata.
-        date (str): Kolonnenavn for dato.
-        temp (str): Kolonnenavn for temperatur.
-        precip (str): Kolonnenavn for nedbør.
-        n_days (int): Antall varmeste dager å analysere.
-    
+        date_col (str): Navn på kolonnen som inneholder dato.
+        temp_col (str): Navn på kolonnen som inneholder temperaturverdier.
+        precip_col (str): Navn på kolonnen som inneholder nedbørverdier.
+        n_days (int): Antall varmeste dager som skal analyseres.
+
     Returns:
         pd.DataFrame: DataFrame med de varmeste dagene.
     """
+    try:
+        # SQL-spørring for å hente de n varmeste dagene
+        query = f"""
+        SELECT *
+        FROM df
+        ORDER BY {temp_col} DESC
+        LIMIT {n_days}
+        """
+        hottest_days = psql.sqldf(query, locals())
 
-    # SQL-spørring for å hente n varmeste dager 
-    query = f"""
-    SELECT *
-    FROM df
-    ORDER BY {temp} DESC
-    LIMIT {n_days}
-"""
-    result = psql.sqldf(query, locals())
+        # Legg til kolonne med år basert på datokolonnen
+        hottest_days['År'] = pd.to_datetime(hottest_days[date_col]).dt.year
 
-    # Visualisering med scatterplot av temp vs nedbør
-    plt.figure(figsize=(6, 3))
-    x = range(len(result))
-    plt.scatter(x, result[temp], color='red', label=f'{temp} (°C)', s=100)
-    plt.scatter(x, result[precip], color='blue', label=f'{precip} (mm)', s=100)
-    plt.title(f'{temp} (°C) vs {precip} (mm) for de {n_days} Varmeste Dagene')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    except Exception as e:
+        print(f"Feil under dataanalyse: {e}")
+        return pd.DataFrame()  # Returnerer tomt DataFrame ved feil
 
+    # Visualisering: Temperatur og nedbør 
+    try:
+        plt.figure(figsize=(6, 3))
+        x = range(len(hottest_days))
+        plt.scatter(x, hottest_days[temp_col], color='red', label=f'{temp_col} (°C)', s=100)
+        plt.scatter(x, hottest_days[precip_col], color='blue', label=f'{precip_col} (mm)', s=100)
+        plt.title(f'{temp_col} (°C) vs {precip_col} (mm) for de {n_days} varmeste dagene')
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+    except Exception as e:
+        print(f"Feil under scatterplot-visualisering: {e}")
 
-    # Kakediagram for å vise fordelingen av vamrme dager etter år 
-    # Legger til en kolonne med år
-    result['År'] = pd.to_datetime(result[date]).dt.year
+    # Visualisering: Kakediagram etter år 
+    try:
+        år_telling = hottest_days['År'].value_counts()
 
-    # Teller hvor mange ganger hvert år forekommer
-    år_telling = result['År'].value_counts()
+        plt.figure(figsize=(6, 6))
+        plt.pie(
+            år_telling,
+            labels=år_telling.index,
+            autopct='%1.1f%%',
+            colors=plt.cm.Set3.colors
+        )
+        plt.title(f"De {n_days} varmeste dagene fordelt på år")
+        plt.axis('equal')
+        plt.show()
+    except Exception as e:
+        print(f"Feil under kakediagram-visualisering: {e}")
 
-    plt.figure(figsize=(6, 6))
-    plt.pie(
-        år_telling,
-        labels=år_telling.index,
-        autopct='%1.1f%%',
-        colors=plt.cm.Set3.colors 
-    )
-    plt.title(f"De {n_days} varmeste dagene fordelt på år")
-    plt.axis('equal')
-    plt.show()
+    return hottest_days
 
-    return result 
 
 def analyze_frost_api_clean_data():
     """
-    Leser inn rengjorte værdata fra frostAPI og kaller den generelle funksjonen "analyze_hottest_days
-    for å analysere de varmeste dagene med hensyn på temperatur og nedbør. 
+    Leser inn rengjorte værdata fra Frost API og analyserer de varmeste dagene
+    basert på temperatur og nedbør ved å kalle analyze_hottest_days.
 
     Returns:
         pd.DataFrame: DataFrame med de varmeste dagene.
     """
-   
-    # Leser inn rengjort værdata fra frostAPI
-    file_name = "../../data/clean_data/frostAPI_clean_data.json"  
-    df = pd.read_json(file_name)
-    # Kaller den generelle analysen med spesifikke kolonnenavn
-    return analyze_hottest_days(df, date="Dato", temp="Temperatur", precip="Nedbør", n_days=10)
+    file_path = "../../data/clean_data/frostAPI_clean_data.json"
+
+    try:
+        df = pd.read_json(file_path)
+    except Exception as e:
+        print(f"Feil ved lesing av fil '{file_path}': {e}")
+        return pd.DataFrame()
+
+    # Kaller analysefunksjonen med relevante kolonnenavn
+    return analyze_hottest_days(
+        df=df,
+        date_col="Dato",
+        temp_col="Temperatur",
+        precip_col="Nedbør",
+        n_days=10
+    )
+
 
 
 
