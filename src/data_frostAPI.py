@@ -319,37 +319,53 @@ def clean_data_frostAPI(threshold=3):
     else:
         print("Data kunne ikke leses eller er tom. Avbryter prosesseringen.")
 
-def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
 
+def analyse_skewness(clean_data_file, cols=None):
     """
-    Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon og/eller skalering.
-    - Kolonner med skjevhet over ±threshold transformeres med Yeo-Johnson og deretter standardiseres.
-    - Kolonner med lavere skjevhet standardiseres direkte.
+    Leser data fra JSON og skriver ut skjevhet for kolonner.
 
     Args:
         clean_data_file (str): Filsti for input-data (renset).
-        analyzed_data_file (str): Filsti for output-data (transformert).
-        threshold (float): Grense for skjevhet. Kolonner med høyere skjevhet transformeres.
-        cols (list): Valgfrie kolonnenavn for analyse. Hvis None, brukes alle numeriske kolonner.
-
+        cols (list): Kolonner som skal analyseres. Hvis None, analyseres alle numeriske.
+    
+    Returns:
+        pd.DataFrame: DataFrame med innlest data.
+        list: Liste over kolonner som analyseres.
     """
     try:
         df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
         print(f"Feil ved lesing av fil: {e}")
-        return
+        return None, None
     
-    df_transformed = df.copy()
-    yeo_transformer = PowerTransformer(method='yeo-johnson')
-    scaler = StandardScaler()
-
     if cols is None:
-        cols = df_transformed.select_dtypes(include='number').columns
+        cols = df.select_dtypes(include='number').columns.tolist()
 
     print("Skjevhet før transformasjon:")
     for col in cols:
-        skew_before = df_transformed[col].skew()
-        print(f"→ {col}: {skew_before:.2f}")
+        skew_val = df[col].skew()
+        print(f"→ {col}: {skew_val:.2f}")
+
+    return df, cols
+
+
+def fix_skewness(df, threshold, cols):
+    """
+    Transformerer data i kolonner med skjevhet over terskel med Yeo-Johnson + skalering.
+    Andre kolonner skaleres kun.
+
+    Args:
+        df (pd.DataFrame): DataFrame med input-data.
+        threshold (float): Grense for skjevhet.
+        cols (list): Kolonner som skal transformeres.
+
+    Returns:
+        pd.DataFrame: Transformert DataFrame.
+    """
+    yeo_transformer = PowerTransformer(method='yeo-johnson')
+    scaler = StandardScaler()
+
+    df_transformed = df.copy()
 
     print(f"\nPåfører Yeo-Johnson eller standardisering basert på skjevhet (±{threshold}):")
     for col in cols:
@@ -368,23 +384,29 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     print("\nSkjevhet etter transformasjon:")
     for col in cols:
         print(f"→ {col}: {df_transformed[col].skew():.2f}")
-    df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nTransformert data lagret i {analyzed_data_file}")
 
     return df_transformed
 
+
 def fix_skewness_data_frostAPI():
     """
-    Henter renset data fra Frost API, analyserer og fikser skjevhet i dataene.
-    Bruker den generelle funksjonen "analyse_and_fix_skewness".
-
+    Henter renset data fra Frost API, analyserer og fikser skjevhet.
+    Lagrer transformert data til fil.
     """
     clean_data_file = "../../data/clean_data/frostAPI_clean_data.json"
-    analyze_data_file = "../../data/analyzed_data/frostAPI_analyzed_data.json"
+    analyzed_data_file = "../../data/analyzed_data/frostAPI_analyzed_data.json"
     threshold = 1.0
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
 
-    analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols=None)
+    df, cols = analyse_skewness(clean_data_file, cols)
+    if df is None:
+        print("Avslutter pga. feil i innlasting.")
+        return
+
+    df_transformed = fix_skewness(df, threshold, cols)
+    df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
+    print(f"\nTransformert data lagret i {analyzed_data_file}")
+
 
 
 def get_season(date):
