@@ -251,7 +251,7 @@ def visualize_missing_data_missingno(df_or_path):
 
     
 
-def print_duplicate_rows(df, subset_cols):
+def print_duplicate_rows(df, subset):
     """
     Skriver ut informasjon om dupliserte rader basert på angitte kolonner.
 
@@ -262,18 +262,18 @@ def print_duplicate_rows(df, subset_cols):
     Returns:
         None: Skriver ut antall duplikater og duplikatrader.
     """
-    if not all(col in df.columns for col in subset_cols):
-        raise ValueError(f"Alle kolonner i {subset_cols} må finnes i DataFrame.")
+    if not all(col in df.columns for col in subset):
+        raise ValueError(f"Alle kolonner i {subset} må finnes i DataFrame.")
 
-    duplicates = df[df.duplicated(subset=subset_cols, keep=False)]
+    duplicates = df[df.duplicated(subset=subset, keep=False)]
     
     if duplicates.empty:
-        print(f"Ingen duplikater funnet basert på kolonner: {subset_cols}")
+        print(f"Ingen duplikater funnet basert på kolonner: {subset}")
     else:
-        print(f"Totalt {len(duplicates)} duplikatrader basert på kolonner: {subset_cols}")
+        print(f"Totalt {len(duplicates)} duplikatrader basert på kolonner: {subset}")
         print(duplicates)
 
-def remove_duplicate_dates(df, subset=["Dato"]):
+def remove_duplicate_dates(df, subset):
     """
     Fjerner duplikater basert på angitte kolonner (standard: kun 'Dato').
 
@@ -299,13 +299,13 @@ def check_and_clean_frost_duplicates():
     """
     filepath = "../../data/raw_data/frostAPI_data.json"
     df = pd.read_json(filepath)
-    subset_cols = ["Dato", "Stasjon"]
+    subset = ["Dato", "Stasjon"]
 
     print("Før opprydding:")
-    print_duplicate_rows(df, subset_cols)
+    print_duplicate_rows(df=df, subset=subset)
 
     original_len = len(df)
-    df_cleaned = remove_duplicate_dates(df, subset=subset_cols)
+    df_cleaned = remove_duplicate_dates(df=df, subset=["Dato", "Stasjon"])
     cleaned_len = len(df_cleaned)
 
     print("\nEtter fjerning av duplikater:")
@@ -410,7 +410,7 @@ def clean_data_frostAPI(threshold=3):
     pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
 
     #Sjekker og fjerner duplikater
-    pivot_df= remove_duplicate_dates(pivot_df)
+    pivot_df= remove_duplicate_dates(pivot_df, subset=["Dato", "Stasjon"])
     
     # Sjekk om dataen ble lastet inn riktig og ikke er tom
     if pivot_df is not None and not pivot_df.empty:

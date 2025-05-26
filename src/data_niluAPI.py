@@ -113,15 +113,16 @@ def check_and_clean_nilu_duplicates():
     Returns:
         pd.DataFrame: Renset DataFrame uten duplikat-datoer.
     """
-    from data_frostAPI import print_duplicate_dates, remove_duplicate_dates
+    from data_frostAPI import print_duplicate_rows, remove_duplicate_dates
     filepath = "../../data/raw_data/frostAPI_data.json"
     df = pd.read_json(filepath)
+    subset = ["Dato"]
 
     print("Før opprydding:")
-    print_duplicate_dates(df)
+    print_duplicate_rows(df, subset=subset)
 
     original_len = len(df)
-    df_cleaned = remove_duplicate_dates(df)
+    df_cleaned = remove_duplicate_dates(df, subset=subset)
     cleaned_len = len(df_cleaned)
 
     print("\nEtter fjerning av duplikater:")
