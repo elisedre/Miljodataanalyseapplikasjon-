@@ -505,13 +505,13 @@ def analyze_correlation_between_weather_and_air_quality(
     plt.figure(figsize = (12, 6))
 
     plt.subplot(1, 2, 1)
-    sns.scatterplot(x = weather1, y = airquality1, data = df_analyse)
+    sns.regplot(x = weather1, y = airquality1, data = df_analyse, line_kws={"color": "red"})
     plt.title(f"{weather1} vs {airquality1}")
     plt.xlabel(f"{weather1}")
     plt.ylabel(f"{airquality1}")
 
     plt.subplot(1, 2, 2)
-    sns.scatterplot(x = weather2, y = airquality2, data = df_analyse)
+    sns.regplot(x = weather2, y = airquality2, data = df_analyse, line_kws={"color": "red"})
     plt.title(f"{weather2} vs {airquality2}")
     plt.xlabel(f"{weather2}")
     plt.ylabel(f"{airquality2}")
