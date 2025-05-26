@@ -9,10 +9,68 @@ from sklearn.preprocessing import PowerTransformer
 import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 
+def get_info_frostAPI(endpoint, parameters, client_id):
+    """
+    Henter informasjon fra Frost API og printer ID og navn for hvert element.
+
+    Args:
+        endpoint (str): API-endepunktet.
+        parameters (dict or None): Parametere for API-kallet.
+        client_id (str): Client ID for autentisering.
+
+    Returns:
+        list or None: Liste med hentet data, eller None ved feil.
+    """
+    try:
+        response = requests.get(endpoint, params=parameters or {}, auth=(client_id, ''))
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as e:
+        print(f"Feil ved forespørsel til Frost API: {e}")
+        return None
+    except ValueError as e:
+        print(f"Feil ved parsing av JSON: {e}")
+        return None
+
+    elements = data.get("data", [])
+    for element in elements:
+        print(f"ID: {element['id']}, Navn: {element.get('name', 'Ingen navn')}")
+    
+    return elements
+
+
+def get_elements_frostAPI(client_id):
+    """
+    Bruker get_info_frostAPI til å hente elementer fra Frost API.
+
+    Args:
+        client_id (str): Client ID for autentisering.
+    """
+    parameters = None
+    endpoint = 'https://frost.met.no/elements/v0.jsonld'
+    get_info_frostAPI(endpoint, parameters, client_id)
+
+
+def get_stations_frostAPI(client_id):
+    """
+    Bruker get_info_frostAPI til å hente stasjoner fra Frost API.
+
+    Args:
+        client_id (str): Client ID for autentisering.
+    """
+    
+    parameters = {
+        'types': 'SensorSystem',  
+        'country': 'NO',      
+    }
+
+    endpoint = 'https://frost.met.no/sources/v0.jsonld'
+    get_info_frostAPI(endpoint, parameters, client_id)
+
 
 def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     """
-    Henter rådata fra Frost API.
+    Henter rådata fra Frost API med robust feilbehandling.
 
     Args:
         endpoint (str): API-endepunktet.
@@ -22,17 +80,19 @@ def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     Returns:
         list: Liste med data fra API-et, eller en tom liste hvis noe går galt.
     """
-    response = requests.get(endpoint, params=parameters, auth=(client_id, ""))
+    try:
+        response = requests.get(endpoint, params=parameters, auth=(client_id, ""))
+        response.raise_for_status()  # Kaster exception hvis status != 200
+        return response.json().get("data", [])
     
-    # Sjekk om forespørselen var vellykket
-    if response.status_code != 200:
-        print("Feil ved henting av data: Status Code:", response.status_code)
-        print("Response Text:", response.text)
+    except requests.exceptions.RequestException as e:
+        print(f"Feil ved henting av data fra Frost API:\n→ {e}")
+        return []
+
+    except ValueError as e:
+        print(f"Feil ved parsing av JSON-respons:\n→ {e}")
         return []
     
-    # Returner data fra API-responsen
-    return response.json().get("data", [])
-
 
 def process_weather_data(data, elements):
     """
@@ -59,7 +119,6 @@ def process_weather_data(data, elements):
         
         målinger.append(måling_dict)
     return målinger
-
 
 
 def save_data_as_json(data, file, index_columns, value_columns, aggfunc="mean"):
@@ -128,88 +187,66 @@ def data_frostAPI(client_id):
     )
 
 
-def get_info_frostAPI(endpoint, parameters, client_id):
+def calculate_outlier_limits(df, variable, threshold=3):
     """
-    Henter informasjon om tilgjengelige elementer fra Frost API.
+    Beregner nedre og øvre grense for outliers basert på standardavvik.
 
     Args:
-        endpoint (str): API-endepunktet.
-        parameters (dict): Parametere for API-kallet.
-        client_id (str): Client ID for autentisering.
+        df (pd.DataFrame): DataFrame med data.
+        variable (str): Kolonnenavn som skal analyseres.
+        threshold (float): Antall standardavvik som definerer outlier.
+
+    Returns:
+        tuple: (lower_limit, upper_limit)
     """
-    response = requests.get(endpoint, params=parameters, auth=(client_id, ''))
-    data = response.json()
-
-    if response.status_code == 200:
-        elements = data['data']
-        for element in elements:
-            print(f"ID: {element['id']}, Navn: {element.get('name', 'Ingen navn')}")
-    else:
-        print(f"Feil ved henting av stasjoner: {data}")
+    mean = df[variable].mean()
+    std = df[variable].std()
+    lower_limit = mean - threshold * std
+    upper_limit = mean + threshold * std
+    return lower_limit, upper_limit
 
 
-def get_elements_frostAPI(client_id):
+def plot_outlier_distribution(df, variable, lower_limit, upper_limit):
     """
-    Bruker get_info_frostAPI til å hente elementer fra Frost API.
+    Plotter distribusjonen til en variabel med markerte outlier-grenser.
 
     Args:
-        client_id (str): Client ID for autentisering.
+        df (pd.DataFrame): DataFrame med data.
+        variable (str): Kolonnenavn som skal plottes.
+        lower_limit (float): Nedre grense for outlier.
+        upper_limit (float): Øvre grense for outlier.
     """
-    parameters = None
-    endpoint = 'https://frost.met.no/elements/v0.jsonld'
-    get_info_frostAPI(endpoint, parameters, client_id)
+    plot = sns.displot(data=df, x=variable, kde=True)
+    plot.set(title=f"Distribusjon av {variable}", xlabel=variable)
 
+    for ax in plot.axes.flat:
+        ax.axvline(lower_limit, color='r', linestyle='--', label='Lower Limit')
+        ax.axvline(upper_limit, color='r', linestyle='--', label='Upper Limit')
+        ax.legend()
 
-def get_stations_frostAPI(client_id):
-    """
-    Bruker get_info_frostAPI til å hente stasjoner fra Frost API.
+    plt.show()
 
-    Args:
-        client_id (str): Client ID for autentisering.
-    """
-    
-    parameters = {
-        'types': 'SensorSystem',  
-        'country': 'NO',      
-    }
-
-    endpoint = 'https://frost.met.no/sources/v0.jsonld'
-    get_info_frostAPI(endpoint, parameters, client_id)
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
-    Analyserer og plott outliers for gitte variabler i en DataFrame.
+    Analyserer outlier-grenser for gitte variabler og plotter resultatene.
 
     Args:
         df (pd.DataFrame): Datasettet.
         variables (list): Liste over kolonnenavn som skal analyseres.
-        threshold (float): Antall standardavvik som definerer en outlier.
+        threshold (float): Antall standardavvik som definerer outlier.
     """
     for var in variables:
-        mean = df[var].mean()
-        std = df[var].std()
-        lower_limit = mean - threshold * std
-        upper_limit = mean + threshold * std
-
+        lower_limit, upper_limit = calculate_outlier_limits(df, var, threshold)
         outliers = df[~df[var].between(lower_limit, upper_limit)]
-        print(f"\nOutliers for {var}:")
-        print(outliers[[var]].count())
+        print(f"\nOutliers for {var}: {outliers.shape[0]}")
 
-        plot = sns.displot(data=df, x=var, kde=True)
-        plot.set(title=f"Distribusjon av {var}", xlabel=var)
+        plot_outlier_distribution(df, var, lower_limit, upper_limit)
 
-        for ax in plot.axes.flat:
-            ax.axvline(lower_limit, color='r', linestyle='--', label='Lower Limit')
-            ax.axvline(upper_limit, color='r', linestyle='--', label='Upper Limit')
-            ax.legend()
-
-        plt.show()
 
 def analyze_frost_data():
     """
     Leser Frost API-data fra en JSON-fil, analyserer og visualiserer outliers.
-    Bruker funksjonen "analyze_and_plot_outliers" for å finne og plotte outliers.
-
     """
     df_frost = pd.read_json("../../data/raw_data/frostAPI_data.json")
     variables = ['Nedbør', 'Temperatur', 'Vindhastighet']
@@ -217,7 +254,7 @@ def analyze_frost_data():
 
     analyze_and_plot_outliers(df_frost, variables, threshold)
 
-#
+
 def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
     """
     Setter verdiene som mangler målinger fra til Nan, og interpolerer alle NaN-verdier med linær metode. 
@@ -283,37 +320,53 @@ def clean_data_frostAPI(threshold=3):
     else:
         print("Data kunne ikke leses eller er tom. Avbryter prosesseringen.")
 
-def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, cols=None):
 
+def analyse_skewness(clean_data_file, cols=None):
     """
-    Leser JSON-fil og analyserer skjevhet i dataene med Yeo-Johnson transformasjon og/eller skalering.
-    - Kolonner med skjevhet over ±threshold transformeres med Yeo-Johnson og deretter standardiseres.
-    - Kolonner med lavere skjevhet standardiseres direkte.
+    Leser data fra JSON og skriver ut skjevhet for kolonner.
 
     Args:
         clean_data_file (str): Filsti for input-data (renset).
-        analyzed_data_file (str): Filsti for output-data (transformert).
-        threshold (float): Grense for skjevhet. Kolonner med høyere skjevhet transformeres.
-        cols (list): Valgfrie kolonnenavn for analyse. Hvis None, brukes alle numeriske kolonner.
-
+        cols (list): Kolonner som skal analyseres. Hvis None, analyseres alle numeriske.
+    
+    Returns:
+        pd.DataFrame: DataFrame med innlest data.
+        list: Liste over kolonner som analyseres.
     """
     try:
         df = pd.read_json(clean_data_file, orient="records", encoding="utf-8")
     except ValueError as e:
         print(f"Feil ved lesing av fil: {e}")
-        return
+        return None, None
     
-    df_transformed = df.copy()
-    yeo_transformer = PowerTransformer(method='yeo-johnson')
-    scaler = StandardScaler()
-
     if cols is None:
-        cols = df_transformed.select_dtypes(include='number').columns
+        cols = df.select_dtypes(include='number').columns.tolist()
 
     print("Skjevhet før transformasjon:")
     for col in cols:
-        skew_before = df_transformed[col].skew()
-        print(f"→ {col}: {skew_before:.2f}")
+        skew_val = df[col].skew()
+        print(f"→ {col}: {skew_val:.2f}")
+
+    return df, cols
+
+
+def fix_skewness(df, threshold, cols):
+    """
+    Transformerer data i kolonner med skjevhet over terskel med Yeo-Johnson + skalering.
+    Andre kolonner skaleres kun.
+
+    Args:
+        df (pd.DataFrame): DataFrame med input-data.
+        threshold (float): Grense for skjevhet.
+        cols (list): Kolonner som skal transformeres.
+
+    Returns:
+        pd.DataFrame: Transformert DataFrame.
+    """
+    yeo_transformer = PowerTransformer(method='yeo-johnson')
+    scaler = StandardScaler()
+
+    df_transformed = df.copy()
 
     print(f"\nPåfører Yeo-Johnson eller standardisering basert på skjevhet (±{threshold}):")
     for col in cols:
@@ -332,23 +385,28 @@ def analyse_and_fix_skewness(clean_data_file, analyzed_data_file, threshold, col
     print("\nSkjevhet etter transformasjon:")
     for col in cols:
         print(f"→ {col}: {df_transformed[col].skew():.2f}")
-    df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nTransformert data lagret i {analyzed_data_file}")
 
     return df_transformed
 
+
 def fix_skewness_data_frostAPI():
     """
-    Henter renset data fra Frost API, analyserer og fikser skjevhet i dataene.
-    Bruker den generelle funksjonen "analyse_and_fix_skewness".
-
+    Henter renset data fra Frost API, analyserer og fikser skjevhet.
+    Lagrer transformert data til fil.
     """
     clean_data_file = "../../data/clean_data/frostAPI_clean_data.json"
-    analyze_data_file = "../../data/analyzed_data/frostAPI_analyzed_data.json"
+    analyzed_data_file = "../../data/analyzed_data/frostAPI_analyzed_data.json"
     threshold = 1.0
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
 
-    analyse_and_fix_skewness(clean_data_file, analyze_data_file, threshold, cols=None)
+    df, cols = analyse_skewness(clean_data_file, cols)
+    if df is None:
+        print("Avslutter pga. feil i innlasting.")
+        return
+
+    df_transformed = fix_skewness(df, threshold, cols)
+    df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
+    print(f"\nTransformert data lagret i {analyzed_data_file}")
 
 
 def get_season(date):
@@ -359,8 +417,7 @@ def get_season(date):
     - date (datetime): En dato i datetime-format.
 
     Returns:
-    - str: Navnet på sesongen ('Vår', 'Sommer', 'Høst', 'Vinter') som datoen tilhører.
-
+    - str: Navnet på sesongen ('Vår', 'Sommer', 'Høst', 'Vinter').
     """
     if date.month in [3, 4, 5]:
         return 'Vår'
@@ -372,39 +429,44 @@ def get_season(date):
         return 'Vinter'
 
 
-def calculate_and_plot_seasonal_bars(data):
+def calculate_seasonal_stats(data):
     """
-    Beregner og visualiserer gjennomsnittlig temperatur og nedbør per sesong per år
-    i form av søylediagrammer.
+    Legger til sesong og år, og beregner gjennomsnitt og standardavvik for temperatur og nedbør per sesong per år.
 
     Args:
-    - data: DataFrame med minst kolonnene 'Dato', 'Temperatur', og 'Nedbør'.
-    - sesonger: Liste med sesonger å vise (f.eks. ['Vår', 'Sommer']), eller None for å vise alle.
+    - data (DataFrame): Data med kolonnene 'Dato', 'Temperatur', og 'Nedbør'.
 
+    Returns:
+    - DataFrame: Aggregert statistikk per sesong og år.
     """
-
-    # Konverter og legg til sesong og år
     data['Dato'] = pd.to_datetime(data['Dato'])
-
     data['Sesong'] = data['Dato'].apply(get_season)
     data['År'] = data['Dato'].dt.year
 
-    # Grupperer data etter år og sesong
-    season_stats = data.groupby(['År', 'Sesong']).agg({
+    stats = data.groupby(['År', 'Sesong']).agg({
         'Temperatur': ['mean', 'std'],
         'Nedbør': ['mean', 'std']
     }).reset_index()
 
-    season_stats.columns = [
+    stats.columns = [
         'År', 'Sesong',
         'Temperatur_Gjennomsnitt', 'Temperatur_Std',
         'Nedbør_Gjennomsnitt', 'Nedbør_Std'
     ]
+    return stats
 
+
+def plot_seasonal_bars(stats_df):
+    """
+    Visualiserer gjennomsnittlig temperatur og nedbør per sesong per år.
+
+    Args:
+    - stats_df (DataFrame): Dataframe med kolonner som inneholder aggregerte verdier per sesong og år.
+    """
     sesonger = ['Vår', 'Sommer', 'Høst', 'Vinter']
 
     for sesong in sesonger:
-        data_sesong = season_stats[season_stats['Sesong'] == sesong]
+        data_sesong = stats_df[stats_df['Sesong'] == sesong]
 
         if data_sesong.empty:
             print(f"Ingen data for sesongen: {sesong}")
@@ -412,8 +474,9 @@ def calculate_and_plot_seasonal_bars(data):
 
         # Temperatur søylediagram
         plt.figure(figsize=(10, 5))
-        plt.bar(data_sesong['År'], data_sesong['Temperatur_Gjennomsnitt'], yerr=data_sesong['Temperatur_Std'],
-                capsize=5, color='salmon', label='Temperatur')
+        plt.bar(data_sesong['År'], data_sesong['Temperatur_Gjennomsnitt'],
+                yerr=data_sesong['Temperatur_Std'], capsize=5,
+                color='salmon', label='Temperatur')
         plt.title(f"Gjennomsnittstemperatur per år – {sesong}")
         plt.xlabel("År")
         plt.ylabel("Temperatur (°C)")
@@ -423,8 +486,9 @@ def calculate_and_plot_seasonal_bars(data):
 
         # Nedbør søylediagram
         plt.figure(figsize=(10, 5))
-        plt.bar(data_sesong['År'], data_sesong['Nedbør_Gjennomsnitt'], yerr=data_sesong['Nedbør_Std'],
-                capsize=5, color='skyblue', label='Nedbør')
+        plt.bar(data_sesong['År'], data_sesong['Nedbør_Gjennomsnitt'],
+                yerr=data_sesong['Nedbør_Std'], capsize=5,
+                color='skyblue', label='Nedbør')
         plt.title(f"Gjennomsnittsnedbør per år – {sesong}")
         plt.xlabel("År")
         plt.ylabel("Nedbør (mm)")
@@ -436,19 +500,13 @@ def calculate_and_plot_seasonal_bars(data):
 def load_and_plot_frost_seasonal_data():
     """
     Leser inn meteorologiske data fra en JSON-fil og visualiserer gjennomsnittlig
-    temperatur og nedbør per sesong per år med `calculate_and_plot_seasonal_bars`.
-
-    Args:
-    - filepath (str): Sti til JSON-filen som inneholder dataen.
-
+    temperatur og nedbør per sesong per år.
     """
-    # Lese JSON-filen
     with open("../../data/clean_data/frostAPI_clean_data.json", "r", encoding="utf-8") as file:
         data = json.load(file)
 
-    # Konverter til DataFrame
     df = pd.DataFrame(data)
+    stats = calculate_seasonal_stats(df)
+    plot_seasonal_bars(stats)
 
-    # Kall på eksisterende funksjon for beregning og visualisering
-    calculate_and_plot_seasonal_bars(df)
 
