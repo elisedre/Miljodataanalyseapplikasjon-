@@ -10,13 +10,6 @@ from sklearn.base import clone
 from lightgbm import LGBMRegressor
 import plotly.graph_objects as go
 
-#må fikse litt på hvor det skal bli brukt try and ecept 
-#model clone er ikke nødvendig sa chat
-'''prediction_with_futurevalues()
-Leser data, legger til features, evaluerer, trener og plotter.
-💡 Del opp i: evaluate_model(), train_full_model(), predict_future() og plot_forecast(), 
-som du kan kalle inne i én wrapper.'''
-
 def prepare_dataframe(df, date_col):
     """
     Gjør klar DataFrame ved å konvertere og sortere datokolonnen.
