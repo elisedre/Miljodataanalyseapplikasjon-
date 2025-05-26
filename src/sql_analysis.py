@@ -69,7 +69,6 @@ def analyze_hottest_days(df, date_col, temp_col, precip_col, n_days):
 
     return hottest_days
 
-
 def analyze_frost_api_clean_data():
     """
     Leser inn rengjorte værdata fra Frost API og analyserer de varmeste dagene
@@ -146,7 +145,6 @@ def analyze_coldest_days(df, date_col, temp_col, n_days):
 
     return coldest_days
 
-
 def analyze_coldest_frost_api_data():
     """
     Leser inn rengjorte værdata fra Frost API og analyserer de kaldeste dagene
@@ -172,55 +170,72 @@ def analyze_coldest_frost_api_data():
     )
 
 
-
-def analyze_avg_temperature_per_year(df, date, temp):
+def analyze_avg_temperature_per_year(df, date_col, temp_col):
     """
-    Beregner gjennomsnittlig temperatur per år og visualiserer resultatet basert på en DataFrame med værdata.
-    
+    Beregner og visualiserer gjennomsnittlig temperatur per år basert på en DataFrame med værdata.
+
     Args:
         df (pd.DataFrame): DataFrame med værdata.
-        date (str): Kolonnenavn for dato.
-        temp (str): Kolonnenavn for temperatur.
-    
+        date_col (str): Kolonnenavn for dato.
+        temp_col (str): Kolonnenavn for temperatur.
+
     Returns:
-        result (pd.DataFrame): DataFrame med gjennomsnittlig temperatur per år.
+        pd.DataFrame: DataFrame med gjennomsnittlig temperatur per år.
     """
-    
-    # SQL-spørring for å finne gjennomsnittlig temperatur per år
-    query = f"""
-        SELECT strftime('%Y', {date}) AS År,
-            AVG({temp}) AS Gjennomsnitt_temperatur
-        FROM df
-        GROUP BY År
-        ORDER BY År
-    """
-    result = psql.sqldf(query, locals())
+    try:
+        # SQL-spørring for å finne gjennomsnittlig temperatur per år
+        query = f"""
+            SELECT strftime('%Y', {date_col}) AS År,
+                   AVG({temp_col}) AS Gjennomsnitt_temperatur
+            FROM df
+            GROUP BY År
+            ORDER BY År
+        """
+        result = psql.sqldf(query, locals())
 
-    # Visualisering av gjennomsnittlig temperatur per år
-    plt.figure(figsize=(10, 5))
-    plt.plot(result['År'], result['Gjennomsnitt_temperatur'], marker='o', color='blue', linestyle='-')
-    plt.title("Gjennomsnittlig temperatur per år")
-    plt.xlabel("År")
-    plt.ylabel("Temperatur (°C)")
-    plt.grid(True)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+    except Exception as e:
+        print(f"Feil under aggregering av temperaturdata: {e}")
+        return pd.DataFrame()
 
-    return result 
+    # Visualisering av gjennomsnittstemperatur per år
+    try:
+        plt.figure(figsize=(10, 5))
+        plt.plot(result['År'], result['Gjennomsnitt_temperatur'],
+                 marker='o', color='blue', linestyle='-')
+        plt.title("Gjennomsnittlig temperatur per år")
+        plt.xlabel("År")
+        plt.ylabel("Temperatur (°C)")
+        plt.grid(True)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(f"Feil under visualisering: {e}")
+
+    return result
 
 def analyze_avg_temp_frost_api_data():
     """
-    Leser inn rengjorte værdata fra frostAPI og analyserer gjennomsnittlig temperatur per år 
-    ved å kalle den generelle funksjonen "analyze_avg_temperature_per_year".
+    Leser inn rengjorte værdata fra Frost API og analyserer gjennomsnittstemperatur per år.
 
-    Returns: 
-        result (pd.DataFrame): DataFrame med gjennomsnittlig temperatur per år.
+    Returns:
+        pd.DataFrame: DataFrame med gjennomsnittlig temperatur per år.
     """
-    
-    file_name = "../../data/clean_data/frostAPI_clean_data.json"
-    df = pd.read_json(file_name)
-    return analyze_avg_temperature_per_year(df, date="Dato", temp="Temperatur")
+    file_path = "../../data/clean_data/frostAPI_clean_data.json"
+
+    try:
+        df = pd.read_json(file_path)
+    except Exception as e:
+        print(f"Feil ved lesing av fil '{file_path}': {e}")
+        return pd.DataFrame()
+
+    return analyze_avg_temperature_per_year(
+        df=df,
+        date_col="Dato",
+        temp_col="Temperatur"
+    )
+
 
 
 def analyze_weekly_avg_data(df, date, precip, temp, wind):
