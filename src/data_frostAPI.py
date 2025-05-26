@@ -258,17 +258,7 @@ def check_and_clean_frost_duplicates():
     print(f"Rader igjen i datasettet: {len(df_cleaned)}")
     
     return df_cleaned
-
-
-
-def check_duplicate_dates_frostAPI():    
-    """
-    Leser inn værdata fra Frost API og sjekker for dupliserte datoer.
-    Bruker funksjonen "check_duplicate_dates" for å finne og vise dupliserte datoer.
-
-    """    
-    df_frost = pd.read_json("../../data/raw_data/frostAPI_data.json")
-    check_duplicate_dates(df_frost)   
+ 
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
