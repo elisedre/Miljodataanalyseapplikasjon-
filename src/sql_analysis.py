@@ -29,14 +29,14 @@ def analyze_hottest_days(df, date_col, temp_col, precip_col, n_days):
         """
         hottest_days = psql.sqldf(query, locals())
 
-        # Legg til kolonne med år basert på datokolonnen
+        # Legger til kolonne med år basert på datokolonnen
         hottest_days['År'] = pd.to_datetime(hottest_days[date_col]).dt.year
 
     except Exception as e:
         print(f"Feil under dataanalyse: {e}")
         return pd.DataFrame()  # Returnerer tomt DataFrame ved feil
 
-    # Visualisering: Temperatur og nedbør 
+    # Visualisering: Temperatur og nedbør med scatterplot
     try:
         plt.figure(figsize=(6, 3))
         x = range(len(hottest_days))
@@ -52,6 +52,7 @@ def analyze_hottest_days(df, date_col, temp_col, precip_col, n_days):
 
     # Visualisering: Kakediagram etter år 
     try:
+        # Teller antall dager per år
         year_counts = hottest_days['År'].value_counts()
 
         plt.figure(figsize=(6, 6))
@@ -77,9 +78,11 @@ def analyze_frost_api_clean_data():
     Returns:
         pd.DataFrame: DataFrame med de varmeste dagene.
     """
+    # Rengjorte data fra Frost API
     file_path = "../../data/clean_data/frostAPI_clean_data.json"
 
     try:
+        # Leser JSON-filen til en DataFrame
         df = pd.read_json(file_path)
     except Exception as e:
         print(f"Feil ved lesing av fil '{file_path}': {e}")
@@ -127,6 +130,7 @@ def analyze_coldest_days(df, date_col, temp_col, n_days):
 
     # Visualisering: kakediagram som viser fordeling etter år
     try:
+        # Teller antall dager per år
         year_counts = coldest_days['År'].value_counts()
 
         plt.figure(figsize=(6, 6))
@@ -153,9 +157,11 @@ def analyze_coldest_frost_api_data():
     Returns:
         pd.DataFrame: DataFrame med de kaldeste dagene og tilhørende år.
     """
+    # Rengjorte data fra Frost API
     file_path = "../../data/clean_data/frostAPI_clean_data.json"
 
     try:
+        # Leser JSON-filen til en DataFrame
         df = pd.read_json(file_path)
     except Exception as e:
         print(f"Feil ved lesing av fil '{file_path}': {e}")
@@ -222,14 +228,17 @@ def analyze_avg_temp_frost_api_data():
     Returns:
         pd.DataFrame: DataFrame med gjennomsnittlig temperatur per år.
     """
+    # Rengjorte data fra Frost API
     file_path = "../../data/clean_data/frostAPI_clean_data.json"
 
     try:
+        # Leser JSON-filen til en DataFrame
         df = pd.read_json(file_path)
     except Exception as e:
         print(f"Feil ved lesing av fil '{file_path}': {e}")
         return pd.DataFrame()
 
+    # Kaller analysefunksjonen med relevante kolonnenavn
     return analyze_avg_temperature_per_year(
         df=df,
         date_col="Dato",
@@ -250,7 +259,6 @@ def analyze_weekly_avg_data(df, date, precip, temp, wind):
     Returns:
         pd.DataFrame: DataFrame med ukentlig gjennomsnitt for nedbør, temperatur og vindhastighet.
     """
-
     # Legger til en kolonne for uke
     df['Uke'] = pd.to_datetime(df[date]).dt.strftime('%Y-U%U')
 
@@ -299,14 +307,17 @@ def analyze_weekly_avg_frost_api_data():
     Returns:
         pd.DataFrame: DataFrame med ukentlig gjennomsnitt for nedbør, temperatur og vindhastighet.
     """
+    # Rengjorte data fra Frost API
     file_name = "../../data/clean_data/frostAPI_clean_data.json"
 
     try:
+        # Leser JSON-filen til en DataFrame
         df = pd.read_json(file_name)
     except Exception as e:
         print(f"Feil ved lesing av fil: {e}")
         return pd.DataFrame()
     
+    # Kaller analysefunksjonen med relevante kolonnenavn
     return analyze_weekly_avg_data(
         df,
         date="Dato",
@@ -357,14 +368,17 @@ def calculate_std_frost_data():
     Returns:
         pd.DataFrame: DataFrame med standardavvik for nedbør, temperatur og vindhastighet.
     """
+    # Rengjorte data fra Frost API
     file_path = "../../data/clean_data/frostAPI_clean_data.json"
     
     try:
+        # Leser JSON-filen til en DataFrame
         df = pd.read_json(file_path)
     except Exception as e:
         print(f"Feil ved lesing av data: {e}")
         return pd.DataFrame()
 
+    # Kaller den generelle funksjonen for å beregne standardavvik
     return calculate_std_dev(df, "Nedbør", "Temperatur", "Vindhastighet")
 
 
@@ -384,6 +398,7 @@ def calculate_weekly_std_dev(df, date, group, col1, col2, col3):
         pd.DataFrame: DataFrame med ukentlig standardavvik for col1, col2 og col3.
     """
     try:
+        # Konverterer dato-kolonnen til datetime og lager en uke-kolonne
         df[date] = pd.to_datetime(df[date])
         df[group] = df[date].dt.strftime('%Y-U%U') 
         
@@ -403,14 +418,17 @@ def calculate_std_frost_weekly():
     Returns:
         pd.DataFrame: DataFrame med ukentlig standardavvik for nedbør, temperatur og vindhastighet.
     """
+    # Rengjorte data fra Frost API
     file_path = "../../data/clean_data/frostAPI_clean_data.json"
     
     try:
+        # Leser JSON-filen til en DataFrame
         df = pd.read_json(file_path)
     except Exception as e:
         print(f"Feil ved lesing av data: {e}")
         return pd.DataFrame()
 
+    # Kaller den generelle funksjonen for å beregne ukentlig standardavvik
     return calculate_weekly_std_dev(
         df,
         date="Dato",
@@ -440,7 +458,7 @@ def analyze_correlation_between_weather_and_air_quality(
         tuple: Resultater fra SQL-spørringer og korrelasjonsberegninger.
     """
     
-    # Merge DataFrames på dato
+    # Merger DataFrames på dato
     try:
         merged_df = pd.merge(df1, df2, on=date, how="inner")  
     except Exception as e:
@@ -512,16 +530,19 @@ def analyze_frost_nilu():
         tuple: Resultater fra SQL-spørringer og korrelasjonsberegninger.
     """
     try:
+        # Leser inn rengjorte data fra Frost API og NILU API
         with open("../data/clean_data/frostAPI_clean_data.json", "r") as frost_file, \
             open("../data/clean_data/niluAPI_clean_data.json", "r") as nilu_file:
             data_frost = json.load(frost_file)
             data_nilu = json.load(nilu_file)
-        df_frost = pd.json_normalize(data_frost)
+        # Konverterer JSON-data til DataFrames
+        df_frost = pd.json_normalize(data_frost) 
         df_nilu = pd.json_normalize(data_nilu)
     except Exception as e:
         print(f"Feil ved lesing av data: {e}")
         return None, None
 
+    # Kaller den generelle funksjonen for å analysere korrelasjon mellom vær- og luftkvalitetsdata
     return analyze_correlation_between_weather_and_air_quality(
         df_frost, df_nilu,
         date="Dato",
@@ -545,42 +566,53 @@ def analyze_monthly_avg_pollution_data(df, date_col, no2_col, o3_col, so2_col):
     Returns:
         pd.DataFrame: DataFrame med månedlig gjennomsnitt for NO2, O3 og SO2.
     """
+    try:
+        df_copy = df.copy()
+        df_copy["Dato"] = pd.to_datetime(df_copy[date_col])
 
-    # Legger til kolonne for måned basert på valgt datokolonne
-    df["Dato"] = pd.to_datetime(df[date_col])
+        # SQL-spørring for å gruppere på måned og beregne gjennomsnitt
+        query = f"""
+        SELECT 
+            strftime('%Y-%m', Dato) AS Måned, 
+            AVG({no2_col}) AS Snitt_NO2,
+            AVG({o3_col}) AS Snitt_O3,
+            AVG({so2_col}) AS Snitt_SO2,
+            COUNT(*) AS AntallDager
+        FROM df_copy
+        GROUP BY Måned
+        ORDER BY Måned
+        """
+        monthly_stats = psql.sqldf(query, locals())
+    except Exception as e:
+        print(f"Feil ved behandling av data eller SQL-spørring: {e}")
+        return None
 
-    query = f"""
-    SELECT 
-        strftime('%Y-%m', Dato) AS Måned, 
-        AVG({no2_col}) AS Snitt_NO2,
-        AVG({o3_col}) AS Snitt_O3,
-        AVG({so2_col}) AS Snitt_SO2,
-        COUNT(*) AS AntallDager
-    FROM df
-    GROUP BY Måned
-    ORDER BY Måned
-    """
-    monthly_stats = psql.sqldf(query, locals())
-   
+    try:
+        # Visualisering av månedlig gjennomsnitt
+        sns.set(style="whitegrid")
+        plt.figure(figsize=(14, 7))
 
-    # Plotting
-    sns.set(style="whitegrid")
-    plt.figure(figsize=(14, 7))
+        # Plotter linjeplot for hver forurensningstype
+        sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_NO2", label="NO2", marker="o")
+        sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_O3", label="O3", marker="o")
+        sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_SO2", label="SO2", marker="o")
 
-    sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_NO2", label="NO2", marker="o")
-    sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_O3", label="O3", marker="o")
-    sns.lineplot(data=monthly_stats, x="Måned", y="Snitt_SO2", label="SO2", marker="o")
-
-    plt.title("Månedlig gjennomsnitt for NO2, O3 og SO2", fontsize=16)
-    plt.xlabel("Måned")
-    plt.ylabel("Gjennomsnittlig verdi (μg/m³)")
-    plt.xticks(rotation=45)
-    plt.gca().set_xticks(monthly_stats['Måned'][::3])
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+        # Setter tittel og akseetiketter
+        plt.title("Månedlig gjennomsnitt for NO2, O3 og SO2", fontsize=16)
+        plt.xlabel("Måned")
+        plt.ylabel("Gjennomsnittlig verdi (μg/m³)")
+        # Roterer x-aksen for bedre lesbarhet
+        plt.xticks(rotation=45)
+        # Setter x-ticks med jevne mellomrom for bedre oversikt
+        plt.gca().set_xticks(monthly_stats['Måned'][::3])
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+    except Exception as e:
+        print(f"Feil ved plotting: {e}")
 
     return monthly_stats
+
 
 def analyze_monthly_avg_nilu_data():
     """
@@ -590,9 +622,17 @@ def analyze_monthly_avg_nilu_data():
     Returns:
         pd.DataFrame: DataFrame med månedlig gjennomsnitt for NO2, O3 og SO2.
     """
+    # Rengjorte data fra NILU API
     file_path = "../../data/clean_data/niluAPI_clean_data.json"
-    df = pd.read_json(file_path)
 
+    try:
+        # Leser inn JSON-fil til DataFrame
+        df = pd.read_json(file_path)
+    except Exception as e:
+        print(f"Feil ved lesing av NILU-data: {e}")
+        return None
+
+    # Kaller funksjonen for å beregne og visualisere månedlig gjennomsnitt
     return analyze_monthly_avg_pollution_data(
         df,
         date_col="Dato",
