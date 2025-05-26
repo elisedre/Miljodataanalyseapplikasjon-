@@ -34,6 +34,7 @@ def fetch_raw_data_niluAPI(endpoint):
 
     return data
 
+
 def process_raw_data(data):
     """
     Prosesserer rådata til en pandas DataFrame.
@@ -66,6 +67,7 @@ def process_raw_data(data):
     pivot_df.columns = [f"{col[0]}_{col[1]}" if col[1] else col[0] for col in pivot_df.columns]
     return pivot_df
 
+
 def save_to_json(df, output_file):
     """
     Lagrer DataFrame som JSON-fil.
@@ -79,6 +81,7 @@ def save_to_json(df, output_file):
         print(f"Gruppert data er lagret under {output_file}")
     except Exception as e:
         print(f"Feil ved lagring av fil: {e}")
+
 
 def get_raw_data_niluAPI():
     """
@@ -150,6 +153,7 @@ def remove_outliers(raw_data_file, cols, threshold=3):
 
     return pivot_df
 
+
 def interpolate_data(pivot_df, from_date, to_date):
     """
     Interpolerer manglende verdier i en DataFrame for et gitt datointervall.
@@ -202,6 +206,7 @@ def save_clean_data(df, clean_data_file):
     except Exception as e:
         print(f"Feil ved lagring av fil: {e}")
 
+
 def clean_raw_data():
     """
     Henter rådata fra NILU API, fjerner outliers og interpolerer manglende verdier.
@@ -227,6 +232,7 @@ def clean_raw_data():
     except Exception as e:
         print(f"Feil i renseprosessen: {e}")
 
+
 def analyse_skewness(df, cols):
     """
     Analyserer og skriver ut skjevhet for valgte kolonner.
@@ -245,6 +251,7 @@ def analyse_skewness(df, cols):
         skewness_dict[col] = skew_val
         print(f"→ {col}: {skew_val:.2f}")
     return skewness_dict
+
 
 def fix_skewness(df, skewness_dict, threshold):
     """
@@ -286,6 +293,7 @@ def fix_skewness(df, skewness_dict, threshold):
             print(f"→ {new_col}: {df_transformed[new_col].skew():.2f}")
 
     return df_transformed
+
 
 def fix_skewness_data_niluAPI():
     """
@@ -357,6 +365,7 @@ def plot_air_quality(df, verdi_kolonner, titler, fargekolonne, tidskolonne="Dato
         )
 
         fig.show()
+
 
 def load_and_plot_air_quality():
     """

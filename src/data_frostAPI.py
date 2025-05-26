@@ -67,6 +67,7 @@ def get_stations_frostAPI(client_id):
     endpoint = 'https://frost.met.no/sources/v0.jsonld'
     get_info_frostAPI(endpoint, parameters, client_id)
 
+
 def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     """
     Henter rådata fra Frost API med robust feilbehandling.
@@ -91,8 +92,7 @@ def fetch_data_from_frostAPI(endpoint, parameters, client_id):
     except ValueError as e:
         print(f"Feil ved parsing av JSON-respons:\n→ {e}")
         return []
-
-
+    
 
 def process_weather_data(data, elements):
     """
@@ -185,6 +185,7 @@ def data_frostAPI(client_id):
         value_columns=list(elements.values()),
         aggfunc="mean"
     )
+
 
 def calculate_outlier_limits(df, variable, threshold=3):
     """
@@ -406,6 +407,7 @@ def fix_skewness_data_frostAPI():
     df_transformed = fix_skewness(df, threshold, cols)
     df_transformed.to_json(analyzed_data_file, orient="records", indent=4, force_ascii=False)
     print(f"\nTransformert data lagret i {analyzed_data_file}")
+
 
 def get_season(date):
     """
