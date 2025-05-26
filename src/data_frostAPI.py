@@ -285,8 +285,23 @@ def remove_duplicate_dates(df):
     if 'Dato' not in df.columns:
         raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
 
+    return df.drop_duplicates(subset='Dato', keep='first').copy()
+
+def check_and_clean_frost_duplicates():
+    """
+    Leser data fra Frost API JSON-fil, viser duplikater, fjerner dem og returnerer en renset DataFrame.
+
+    Returns:
+        pd.DataFrame: Renset DataFrame uten duplikat-datoer.
+    """
+    filepath = "../../data/raw_data/frostAPI_data.json"
+    df = pd.read_json(filepath)
+
+    print("Før opprydding:")
+    print_duplicate_dates(df)
+
     original_len = len(df)
-    df_cleaned = df.drop_duplicates(subset='Dato', keep='first').copy()
+    df_cleaned = remove_duplicate_dates(df)
     cleaned_len = len(df_cleaned)
 
     print("\nEtter fjerning av duplikater:")
@@ -295,27 +310,7 @@ def remove_duplicate_dates(df):
     else:
         print(f"Rader igjen i datasettet: {cleaned_len} (fjernet {original_len - cleaned_len} duplikat(er))")
 
-    return df_cleaned
 
-def check_and_clean_frost_duplicates():
-    filepath = "../../data/raw_data/frostAPI_data.json"
-    """
-    Leser data fra Frost API JSON-fil, viser duplikater, fjerner dem og returnerer en renset DataFrame.
-
-    Args:
-        filepath (str): Filsti til Frost-data i JSON-format.
-
-    Returns:
-        pd.DataFrame: Renset DataFrame uten duplikat-datoer.
-    """
-    df = pd.read_json(filepath)
-    
-    print("Før opprydding:")
-    print_duplicate_dates(df)
-
-    remove_duplicate_dates(df)
-
- 
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
@@ -399,7 +394,10 @@ def clean_data_frostAPI(threshold=3):
     cols = ["Nedbør", "Temperatur", "Vindhastighet"]
     from_date = "2010-04-02"
     to_date = "2016-12-31"
- 
+    
+    #Sjekker og fjerner duplikater
+    pivot_df= remove_duplicate_dates
+
     # Fjern outliers fra rådataene
     from data_niluAPI import remove_outliers
     pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
