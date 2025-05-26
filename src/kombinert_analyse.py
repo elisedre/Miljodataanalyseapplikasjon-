@@ -10,7 +10,12 @@ from sklearn.base import clone
 from lightgbm import LGBMRegressor
 import plotly.graph_objects as go
 
-
+#må fikse litt på hvor det skal bli brukt try and ecept 
+#model clone er ikke nødvendig sa chat
+'''prediction_with_futurevalues()
+Leser data, legger til features, evaluerer, trener og plotter.
+💡 Del opp i: evaluate_model(), train_full_model(), predict_future() og plot_forecast(), 
+som du kan kalle inne i én wrapper.'''
 
 def prepare_dataframe(df, date_col):
     """
@@ -94,33 +99,30 @@ def plot_dual_time_series(df, date_col, y1_col, y2_col, y1_label, y2_label, titl
         show_colorbar (bool): Om fargeskala skal vises basert på y1_col.
 
     Returns:
-        None
+        None: Visulaiserer graf.
     """
-    try:
-        df = prepare_dataframe(df, date_col)
-        fig, ax1 = create_dual_axis_plot(df, date_col, y1_col, y2_col, y1_label, y2_label, y1_color, y2_color)
-    except Exception as e:
-        print(f"Feil under plotting: {e}")
-        return
 
-    try:
-        ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
-        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-        plt.xticks(rotation=45)
+    df = prepare_dataframe(df, date_col)
+    fig, ax1 = create_dual_axis_plot(df, date_col, y1_col, y2_col, y1_label, y2_label, y1_color, y2_color)
+    
 
-        if show_colorbar and pd.api.types.is_numeric_dtype(df[y1_col]):
-            sm = plt.cm.ScalarMappable(
-                cmap='coolwarm',
-                norm=plt.Normalize(vmin=df[y1_col].min(), vmax=df[y1_col].max())
-            )
-            sm.set_array([])
-            plt.colorbar(sm, ax=ax1, orientation='vertical', label=y1_label)
+    
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    plt.xticks(rotation=45)
 
-        ax1.set_title(title)
-        plt.tight_layout()
-        plt.show()
-    except Exception as e:
-        print(f"Feil under visning av plott: {e}")
+    if show_colorbar and pd.api.types.is_numeric_dtype(df[y1_col]):
+        sm = plt.cm.ScalarMappable(
+            cmap='coolwarm',
+            norm=plt.Normalize(vmin=df[y1_col].min(), vmax=df[y1_col].max())
+        )
+        sm.set_array([])
+        plt.colorbar(sm, ax=ax1, orientation='vertical', label=y1_label)
+
+    ax1.set_title(title)
+    plt.tight_layout()
+    plt.show()
+    
 
 def plot_temperature_no2(df):
     """
@@ -148,9 +150,11 @@ def load_merge_and_plot_no2_temp():
         "../data/clean_data/niluAPI_clean_data.json",
         "Dato"
     )
-
-    plot_temperature_no2(merged_df)
-
+    if merged_df is not None and not merged_df.empty:
+        plot_temperature_no2(merged_df)
+    else:
+        print("Klarte ikke å laste eller kombinere dataene.")
+    
 
 def combine_df(file1_path, file2_path, combining_point):
     """
@@ -164,23 +168,24 @@ def combine_df(file1_path, file2_path, combining_point):
     Return:
     - pd.DataFrame: Kombinert DataFrame med flat struktur
     """
-    
     try:
-        with open(file1_path, "r", encoding="utf-8") as f1: #Les og normaliser første fil
+        with open(file1_path, "r", encoding="utf-8") as f1:
             df1 = pd.json_normalize(json.load(f1))
-        with open(file2_path, "r", encoding="utf-8") as f2:#Les og normaliser andre fil
+        with open(file2_path, "r", encoding="utf-8") as f2:
             df2 = pd.json_normalize(json.load(f2))
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Finner ikke fil: {e.filename}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON-feil i en av filene: {e}")
 
-        if combining_point not in df1.columns or combining_point not in df2.columns:
-            raise KeyError(f"Kombinasjonspunktet '{combining_point}' finnes ikke i en av filene.")
+    if combining_point not in df1.columns or combining_point not in df2.columns:
+        raise KeyError(f"Kolonnen '{combining_point}' finnes ikke i en av filene.")
 
-        df_combined = pd.merge(df1, df2, on=combining_point, how="inner") #Kombiner data
-        df_combined[combining_point] = pd.to_datetime(df_combined[combining_point]) #Konverter til datetime
-        return df_combined
+    df_combined = pd.merge(df1, df2, on=combining_point, how="inner")
+    df_combined[combining_point] = pd.to_datetime(df_combined[combining_point])
+    return df_combined
 
-    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        print(f"Feil: {e}")
-        return None
+    
 
 def add_seasonal_features(df, date_col="Dato"):
     """
@@ -198,32 +203,23 @@ def add_seasonal_features(df, date_col="Dato"):
             - "dag_i_året": Dagnummer i året (1–365)
             - "sin_dag": Sinus av dag_i_året (for å modellere sesonger)
             - "cos_dag": Cosinus av dag_i_året (for å modellere sesonger)
-    Raises:
-        KeyError: Hvis datokolonnen ikke finnes i datasettet.
-        Exception: Ved feil i dato-konvertering eller beregning.
     """
-    try:
-        df = df.copy()
+    
+    df = df.copy()
 
-        # Konverter kolonnen til datetime-format
-        df[date_col] = pd.to_datetime(df[date_col])
+    # Konverter kolonnen til datetime-format
+    df=prepare_dataframe(df, date_col)
+    
+    # Legg til sesongbaserte variabler
+    df["måned"] = df[date_col].dt.month
+    df["ukedag"] = df[date_col].dt.weekday
+    df["dag_i_året"] = df[date_col].dt.dayofyear
 
-        # Legg til sesongbaserte variabler
-        df["måned"] = df[date_col].dt.month
-        df["ukedag"] = df[date_col].dt.weekday
-        df["dag_i_året"] = df[date_col].dt.dayofyear
+    # Sinus og cosinus brukes til å modellere sesongmessige mønstre
+    df["sin_dag"] = np.sin(2 * np.pi * df["dag_i_året"] / 365)
+    df["cos_dag"] = np.cos(2 * np.pi * df["dag_i_året"] / 365)
 
-        # Sinus og cosinus brukes til å modellere sesongmessige mønstre
-        df["sin_dag"] = np.sin(2 * np.pi * df["dag_i_året"] / 365)
-        df["cos_dag"] = np.cos(2 * np.pi * df["dag_i_året"] / 365)
-
-        return df
-
-    except KeyError as e:
-        raise KeyError(f"Kolonnen '{date_col}' finnes ikke i datasettet.") from e
-
-    except Exception as e:
-        raise Exception(f"Feil ved behandling av sesongvariabler: {str(e)}") from e
+    return df
 
 def train_model(df, target_col, features, model_object):
     """
@@ -239,13 +235,12 @@ def train_model(df, target_col, features, model_object):
     Returns:
         model_object: Den trenede modellen, klar for prediksjon med .predict().
     """
-    try:
-        X = df[features]
-        y = df[target_col]
-        model_object.fit(X, y)
-        return model_object
-    except Exception as e:
-        raise RuntimeError(f"Kunne ikke trene modell: {e}")
+
+    X = df[features]
+    y = df[target_col]
+    model_object.fit(X, y)
+    return model_object
+    
 
 
 def predict_feature_values(df, model, features, target_col, num_days, date_col="Dato"):
@@ -265,35 +260,33 @@ def predict_feature_values(df, model, features, target_col, num_days, date_col="
             - "Dato": Fremtidige datoer
             - "predicted_<target_col>": Modellens predikerte verdier for hver dag
     """
-    try:
-        # Hent siste dato og siste rad for baselineverdier
-        last_date = pd.to_datetime(df[date_col].max())
-        last_col = df.iloc[-1]
+    
+    # Hent siste dato og siste rad for baselineverdier
+    last_date = pd.to_datetime(df[date_col].max())
+    last_col = df.iloc[-1]
 
-        # Generer fremtidige datoer
-        future_dates = [last_date + pd.Timedelta(days=i) for i in range(1, num_days + 1)]
-        base_data = {date_col: future_dates}
+    # Generer fremtidige datoer
+    future_dates = [last_date + pd.Timedelta(days=i) for i in range(1, num_days + 1)]
+    base_data = {date_col: future_dates}
 
-        # Kopier relevante verdier videre til fremtidsdata
-        seasonal_features = {"måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"}
-        for f in features:
-            if f not in seasonal_features and f in last_col:
-                base_data[f] = last_col[f]
+    # Kopier relevante verdier videre til fremtidsdata
+    seasonal_features = {"måned", "ukedag", "dag_i_året", "sin_dag", "cos_dag"}
+    for f in features:
+        if f not in seasonal_features and f in last_col:
+            base_data[f] = last_col[f]
 
-        df_future = pd.DataFrame(base_data)
+    df_future = pd.DataFrame(base_data)
 
-        # Legg til sesongbaserte variabler
-        df_future = add_seasonal_features(df_future, date_col)
+    # Legg til sesongbaserte variabler
+    df_future = add_seasonal_features(df_future, date_col)
 
-        # Prediker
-        X_future = df_future[features]
-        df_future[f"predicted_{target_col}"] = model.predict(X_future)
+    # Prediker
+    X_future = df_future[features]
+    df_future[f"predicted_{target_col}"] = model.predict(X_future)
 
-        return df_future[[date_col, f"predicted_{target_col}"]]
+    return df_future[[date_col, f"predicted_{target_col}"]]
 
-    except Exception as e:
-        raise RuntimeError(f"Feil under fremtidsprediksjon: {e}")
-
+    
 
 
 
@@ -388,26 +381,25 @@ def evaluate_and_train_model(df, target_col, features, model_object, test_size=0
     Returns:
         tuple: (model, X_train, X_test, y_train, y_test, y_pred)
     """
-    try:
-        X = df[features]
-        y = df[target_col]
+   
+    X = df[features]
+    y = df[target_col]
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, shuffle=False)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, shuffle=False)
 
-        model = model_object.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+    model = model_object.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
 
-        r2 = r2_score(y_test, y_pred)
-        mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
 
-        print(f"\n🔍 Evaluering av modellen '{model_object.__class__.__name__}' for '{target_col}':")
-        print(f"- R²-score: {r2:.4f}")
-        print(f"- MSE: {mse:.4f}")
+    print(f"\n🔍 Evaluering av modellen '{model_object.__class__.__name__}' for '{target_col}':")
+    print(f"- R²-score: {r2:.4f}")
+    print(f"- MSE: {mse:.4f}")
 
-        return y_train, y_test, y_pred
+    return y_train, y_test, y_pred
 
-    except Exception as e:
-        raise RuntimeError(f"Feil under evaluering av modellen: {e}")
+    
 
 def prediction_with_futurevalues(df, target_col, features, model_object,
                                       num_days=365, test_size=0.2, coverage=None):
@@ -431,21 +423,15 @@ def prediction_with_futurevalues(df, target_col, features, model_object,
 
     #Forbered data
     df = df.copy()
-    df["Dato"] = pd.to_datetime(df["Dato"])
     df = add_seasonal_features(df)
 
-    #fjerner overflødig informasjon fra LGBMRegressor
+    #fjerner overflødig informasjon fra LGBMRegressor, om brukt
     if isinstance(model_object, LGBMRegressor):
         model_object.set_params(verbose=-1)
 
 
-    y_train, y_test, y_pred = evaluate_and_train_model(
-        df=df,
-        target_col=target_col,
-        features=features,
-        model_object=model_object,
-        test_size=test_size
-    )
+    y_train, y_test, y_pred = evaluate_and_train_model(df=df, target_col=target_col, features=features,
+                                                       model_object=model_object, test_size=test_size)
 
     #Tren ny modell på hele datasettet for fremtidsprediksjon
     model_full = clone(model_object) # kopi med samme innstillinger
@@ -472,19 +458,18 @@ def plot_linear_model_coefficients(df, features, target_cols, date_col="Dato"):
         None: Viser et stolpediagram for hver target-kolonne med koeffisienter.
     """
 
-    try:
-        df = add_seasonal_features(df, date_col)
 
-        for target in target_cols:
-            model = train_model(df, target, [f for f in features if f != target], LinearRegression())
-            coeffs = pd.Series(model.coef_, index=[f for f in features if f != target])
-            coeffs.plot(kind="bar", title=f"Coefficients for {target}", color="skyblue")
-            plt.ylabel("Coefficient value")
-            plt.tight_layout()
-            plt.show()
+    df = add_seasonal_features(df, date_col)
 
-    except Exception as e:
-        print(f"Feil ved plotting av koeffisienter: {e}")
+    for target in target_cols:
+        model = train_model(df, target, [f for f in features if f != target], LinearRegression())
+        coeffs = pd.Series(model.coef_, index=[f for f in features if f != target])
+        coeffs.plot(kind="bar", title=f"Coefficients for {target}", color="skyblue")
+        plt.ylabel("Coefficient value")
+        plt.tight_layout()
+        plt.show()
+
+    
 
 def plot_polynomial_regression(X, y, level, feature, target_col):
     """
@@ -500,33 +485,31 @@ def plot_polynomial_regression(X, y, level, feature, target_col):
     Returns:
         None. Viser en matplotlib-figur med scatterplot og regresjonslinjer.
     """
-    try:
-        # Lag en jevn fordeling av X-verdier til prediksjonslinjene
-        x_range = np.linspace(X.min(), X.max(), 300)
+   
+    # Lag en jevn fordeling av X-verdier til prediksjonslinjene
+    x_range = np.linspace(X.min(), X.max(), 300)
 
-        plt.figure(figsize=(10, 5))
-        plt.scatter(X, y, s=10, color="lightgray", label="Faktiske data")
+    plt.figure(figsize=(10, 5))
+    plt.scatter(X, y, s=10, color="lightgray", label="Faktiske data")
 
-        for lev in level:
-            # Tren og bruk polynommodell
-            model = np.poly1d(np.polyfit(X, y, lev))
-            y_pred = model(X)
-            r2 = r2_score(y, y_pred)
+    for lev in level:
+        # Tren og bruk polynommodell
+        model = np.poly1d(np.polyfit(X, y, lev))
+        y_pred = model(X)
+        r2 = r2_score(y, y_pred)
 
-            # Tegn regresjonslinje med R²-score i label
-            plt.plot(x_range, model(x_range), label=f"{lev}. grad (R²={r2:.3f})")
+        # Tegn regresjonslinje med R²-score i label
+        plt.plot(x_range, model(x_range), label=f"{lev}. grad (R²={r2:.3f})")
 
-        # Formatering av plottet
-        plt.xlabel(feature)
-        plt.ylabel(target_col)
-        plt.title(f"Polynomregresjon: {feature} → {target_col}")
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
+    # Formatering av plottet
+    plt.xlabel(feature)
+    plt.ylabel(target_col)
+    plt.title(f"Polynomregresjon: {feature} → {target_col}")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
 
-    except Exception as e:
-        print(f"Feil under plotting av polynomregresjon: {e}")
 
 
 def visualize_polynomial_fit_for_feature(df, feature, target_col, level=[1, 2, 3], date_col="Dato"):
