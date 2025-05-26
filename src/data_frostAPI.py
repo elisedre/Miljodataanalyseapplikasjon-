@@ -121,7 +121,6 @@ def process_weather_data(data, elements):
     return målinger
 
 
-
 def save_data_as_json(data, file, index_columns, value_columns, aggfunc="mean"):
     """
     Lagrer data som JSON-fil med fleksible kolonner og aggregeringsfunksjon.
@@ -187,40 +186,66 @@ def data_frostAPI(client_id):
         aggfunc="mean"
     )
 
+def calculate_outlier_limits(df, variable, threshold=3):
+    """
+    Beregner nedre og øvre grense for outliers basert på standardavvik.
+
+    Args:
+        df (pd.DataFrame): DataFrame med data.
+        variable (str): Kolonnenavn som skal analyseres.
+        threshold (float): Antall standardavvik som definerer outlier.
+
+    Returns:
+        tuple: (lower_limit, upper_limit)
+    """
+    mean = df[variable].mean()
+    std = df[variable].std()
+    lower_limit = mean - threshold * std
+    upper_limit = mean + threshold * std
+    return lower_limit, upper_limit
+
+
+def plot_outlier_distribution(df, variable, lower_limit, upper_limit):
+    """
+    Plotter distribusjonen til en variabel med markerte outlier-grenser.
+
+    Args:
+        df (pd.DataFrame): DataFrame med data.
+        variable (str): Kolonnenavn som skal plottes.
+        lower_limit (float): Nedre grense for outlier.
+        upper_limit (float): Øvre grense for outlier.
+    """
+    plot = sns.displot(data=df, x=variable, kde=True)
+    plot.set(title=f"Distribusjon av {variable}", xlabel=variable)
+
+    for ax in plot.axes.flat:
+        ax.axvline(lower_limit, color='r', linestyle='--', label='Lower Limit')
+        ax.axvline(upper_limit, color='r', linestyle='--', label='Upper Limit')
+        ax.legend()
+
+    plt.show()
+
+
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
-    Analyserer og plott outliers for gitte variabler i en DataFrame.
+    Analyserer outlier-grenser for gitte variabler og plotter resultatene.
 
     Args:
         df (pd.DataFrame): Datasettet.
         variables (list): Liste over kolonnenavn som skal analyseres.
-        threshold (float): Antall standardavvik som definerer en outlier.
+        threshold (float): Antall standardavvik som definerer outlier.
     """
     for var in variables:
-        mean = df[var].mean()
-        std = df[var].std()
-        lower_limit = mean - threshold * std
-        upper_limit = mean + threshold * std
-
+        lower_limit, upper_limit = calculate_outlier_limits(df, var, threshold)
         outliers = df[~df[var].between(lower_limit, upper_limit)]
-        print(f"\nOutliers for {var}:")
-        print(outliers[[var]].count())
+        print(f"\nOutliers for {var}: {outliers.shape[0]}")
 
-        plot = sns.displot(data=df, x=var, kde=True)
-        plot.set(title=f"Distribusjon av {var}", xlabel=var)
+        plot_outlier_distribution(df, var, lower_limit, upper_limit)
 
-        for ax in plot.axes.flat:
-            ax.axvline(lower_limit, color='r', linestyle='--', label='Lower Limit')
-            ax.axvline(upper_limit, color='r', linestyle='--', label='Upper Limit')
-            ax.legend()
-
-        plt.show()
 
 def analyze_frost_data():
     """
     Leser Frost API-data fra en JSON-fil, analyserer og visualiserer outliers.
-    Bruker funksjonen "analyze_and_plot_outliers" for å finne og plotte outliers.
-
     """
     df_frost = pd.read_json("../../data/raw_data/frostAPI_data.json")
     variables = ['Nedbør', 'Temperatur', 'Vindhastighet']
@@ -228,7 +253,7 @@ def analyze_frost_data():
 
     analyze_and_plot_outliers(df_frost, variables, threshold)
 
-#
+
 def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date):
     """
     Setter verdiene som mangler målinger fra til Nan, og interpolerer alle NaN-verdier med linær metode. 
