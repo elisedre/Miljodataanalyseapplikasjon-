@@ -346,7 +346,7 @@ def analyze_frost_data():
     analyze_and_plot_outliers(df_frost, variables, threshold)
 
 
-def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date, interpolate_columns):
+def interpolate_data(pivot_df, from_date, to_date, interpolate_columns):
     """
     Setter verdiene som mangler målinger til Nan, og interpolerer alle NaN-verdier med linær metode. 
     Lagre den rensede dataen som en JSON-fil.
@@ -378,10 +378,13 @@ def interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_dat
             pivot_df[interpolated_col_name] = interpolated_mask.fillna(False)
 
             print(f"{col}: {null_values} verdier ble interpolert")
+    return pivot_df
 
+def save_data_json(pivot_df, data_file):
+    """Lagrer data som en JSON-fil."""
 
-    pivot_df.to_json(clean_data_file, orient="records", indent=4, force_ascii=False)
-    print(f"\nGruppert data er lagret under {clean_data_file}")
+    pivot_df.to_json(data_file, orient="records", indent=4, force_ascii=False)
+    print(f"\nGruppert data er lagret under {data_file}")
 
 def clean_data_frostAPI(threshold=3):
     """
@@ -405,16 +408,19 @@ def clean_data_frostAPI(threshold=3):
 
     #Sjekker og fjerner duplikater
     pivot_df= remove_duplicate_dates(pivot_df)
-
-    # Label encoding av stasjoner
-    pivot_df=label_station(pivot_df)
     
     # Sjekk om dataen ble lastet inn riktig og ikke er tom
     if pivot_df is not None and not pivot_df.empty:
-        interpolate_and_save_clean_data(pivot_df, clean_data_file, from_date, to_date, cols)
+        
+        pivot_df=interpolate_data(pivot_df, from_date, to_date, cols)
     else:
         print("Data kunne ikke leses eller er tom. Avbryter prosesseringen.")
 
+    # Label encoding av stasjoner
+    pivot_df=label_station(pivot_df)
+
+    # Lagre den rensede dataen som en JSON-fil
+    save_data_json(pivot_df, clean_data_file)
 
 def analyse_skewness(clean_data_file, cols=None):
     """
