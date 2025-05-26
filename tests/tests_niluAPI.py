@@ -10,7 +10,7 @@ from unittest.mock import patch, Mock
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Importerer funksjonene som skal testes
-from src.niluAPI.data_niluAPI import (
+from data_niluAPI import (
     fetch_raw_data_niluAPI,
     process_and_save_raw_data,
     remove_outliers,
