@@ -8,6 +8,7 @@ from scipy.stats import pearsonr
 from sklearn.preprocessing import PowerTransformer
 import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
+import missingno as msno
 
 def get_info_frostAPI(endpoint, parameters, client_id):
     """
@@ -226,6 +227,89 @@ def plot_outlier_distribution(df, variable, lower_limit, upper_limit):
 
     plt.show()
 
+
+def visualize_missing_data_missingno():
+    """
+    Leser inn værdata fra JSON og visualiserer manglende verdier per kolonne.
+
+    Viser:
+    - Antall manglende verdier per kolonne
+    - Visualisering med missingno
+    - Valgfri fremheving i plott (kan utvides)
+    """
+    # Les inn data
+    df_frost = pd.read_json("../../data/raw_data/frostAPI_data.json")
+
+    # Antall manglende verdier
+    print("Antall manglende verdier per kolonne:")
+    print(df_frost.isna().sum())
+
+    # Visualisering med missingno (varme og tetthet)
+    msno.matrix(df_frost)
+    plt.title("Visualisering av manglende data (missingno.matrix)")
+    plt.show()
+    
+import pandas as pd
+
+def print_duplicate_dates(df):
+    """
+    Skriver ut informasjon om dupliserte datoer i en DataFrame.
+
+    Args:
+        df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
+    """
+    if 'Dato' not in df.columns:
+        raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
+
+    duplicate_dates = df[df.duplicated(subset='Dato', keep=False)]
+    grouped = duplicate_dates.groupby('Dato').size()
+
+    if grouped.empty:
+        print("Ingen dupliserte datoer funnet.")
+    else:
+        print(f"Antall unike duplikatdatoer: {grouped.shape[0]}")
+        for dato, antall in grouped.items():
+            print(f" - {dato.date()}: {antall} forekomster")
+
+def remove_duplicate_dates(df):
+    """
+    Fjerner duplikater basert på 'Dato' og returnerer en renset DataFrame. Fjerner den andre duplikaten.
+
+    Args:
+        df (pd.DataFrame): DataFrame som må inneholde 'Dato'-kolonnen.
+
+    Returns:
+        pd.DataFrame: DataFrame uten duplikater på 'Dato'.
+    """
+    if 'Dato' not in df.columns:
+        raise ValueError("DataFrame må inneholde en kolonne som heter 'Dato'.")
+
+    df_cleaned = df.drop_duplicates(subset='Dato', keep='first').copy()
+    return df_cleaned
+
+def check_and_clean_frost_duplicates():
+    filepath = "../../data/raw_data/frostAPI_data.json"
+    """
+    Leser data fra Frost API JSON-fil, viser duplikater, fjerner dem og returnerer en renset DataFrame.
+
+    Args:
+        filepath (str): Filsti til Frost-data i JSON-format.
+
+    Returns:
+        pd.DataFrame: Renset DataFrame uten duplikat-datoer.
+    """
+    df = pd.read_json(filepath)
+    
+    print("Før opprydding:")
+    print_duplicate_dates(df)
+
+    df_cleaned = remove_duplicate_dates(df)
+
+    print("\nEtter fjerning av duplikater:")
+    print(f"Rader igjen i datasettet: {len(df_cleaned)}")
+    
+    return df_cleaned
+ 
 
 def analyze_and_plot_outliers(df, variables, threshold=3):
     """
