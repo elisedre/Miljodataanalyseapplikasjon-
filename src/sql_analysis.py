@@ -254,8 +254,8 @@ def analyze_weekly_avg_data(df, date, precip, temp, wind):
     # Legger til en kolonne for uke
     df['Uke'] = pd.to_datetime(df[date]).dt.strftime('%Y-U%U')
 
-    # SQL-spørring for å beregne gjennomsnitt per uke
     try:
+        # SQL-spørring for å beregne ukentlig gjennomsnitt
         query = f"""
             SELECT
                 Uke,
@@ -272,6 +272,7 @@ def analyze_weekly_avg_data(df, date, precip, temp, wind):
         return pd.DataFrame()
     
     try:
+        # Visualisering av gjennomsnittlig nedbør, temperatur og vindhastighet per uke
         plt.figure(figsize=(14, 7))
         plt.plot(result['Uke'], result['Avg_Temperatur'], label='Temperatur (°C)', color='red', marker='o')
         plt.plot(result['Uke'], result['Avg_Nedbør'], label='Nedbør (mm)', color='blue', marker='s')
@@ -314,6 +315,7 @@ def analyze_weekly_avg_frost_api_data():
         wind="Vindhastighet"
     )
 
+
 def calculate_std_dev(df, col1, col2, col3):
     """
     Beregner standardavvik for tre kolonner i et datasett ved hjelp av SQL-spørring.
@@ -327,43 +329,48 @@ def calculate_std_dev(df, col1, col2, col3):
     Returns:
         pd.DataFrame: DataFrame med standardavvik for col1, col2 og col3.
     """
-
-    # SQL-spørring for å beregne standardavvik for hele datasettet
-    query = f"""
-        SELECT
-            SQRT(SUM(({col1} - (SELECT AVG({col1}) FROM df)) * 
-                     ({col1} - (SELECT AVG({col1}) FROM df))) / 
-                     (COUNT({col1}) - 1)) AS StdDev_{col1},
-            SQRT(SUM(({col2} - (SELECT AVG({col2}) FROM df)) * 
-                     ({col2} - (SELECT AVG({col2}) FROM df))) / 
-                     (COUNT({col2}) - 1)) AS StdDev_{col2},
-            SQRT(SUM(({col3} - (SELECT AVG({col3}) FROM df)) * 
-                     ({col3} - (SELECT AVG({col3}) FROM df))) / 
-                     (COUNT({col3}) - 1)) AS StdDev_{col3}
-        FROM df
-    """
-
-    result = psql.sqldf(query, locals())
-    return result
+    try:
+    # SQL-spørring for å beregne standardavvik
+        query = f"""
+            SELECT
+                SQRT(SUM(({col1} - (SELECT AVG({col1}) FROM df)) * 
+                         ({col1} - (SELECT AVG({col1}) FROM df))) / 
+                         (COUNT({col1}) - 1)) AS StdDev_{col1},
+                SQRT(SUM(({col2} - (SELECT AVG({col2}) FROM df)) * 
+                         ({col2} - (SELECT AVG({col2}) FROM df))) / 
+                         (COUNT({col2}) - 1)) AS StdDev_{col2},
+                SQRT(SUM(({col3} - (SELECT AVG({col3}) FROM df)) * 
+                         ({col3} - (SELECT AVG({col3}) FROM df))) / 
+                         (COUNT({col3}) - 1)) AS StdDev_{col3}
+            FROM df
+        """
+        result = psql.sqldf(query, locals())
+        return result
+    except Exception as e:
+        print(f"Feil ved SQL-beregning av standardavvik: {e}")
+        return pd.DataFrame()
 
 def calculate_std_frost_data():
     """
-    Leser inn rengjorte værdata fra frostAPI og beregner standardavviket for nedbør, temperatur og vindhastighet 
-    ved å kalle den generelle funskjonen "calculate_std_dev".
+    Leser inn rengjorte værdata fra Frost API og beregner standardavvik for nedbør, temperatur og vindhastighet.
 
     Returns:
         pd.DataFrame: DataFrame med standardavvik for nedbør, temperatur og vindhastighet.
     """
+    file_path = "../../data/clean_data/frostAPI_clean_data.json"
+    
+    try:
+        df = pd.read_json(file_path)
+    except Exception as e:
+        print(f"Feil ved lesing av data: {e}")
+        return pd.DataFrame()
 
-    file_name = "../../data/clean_data/frostAPI_clean_data.json"  
-    data = pd.read_json(file_name)
-    df = pd.DataFrame(data)
     return calculate_std_dev(df, "Nedbør", "Temperatur", "Vindhastighet")
 
 
 def calculate_weekly_std_dev(df, date, group, col1, col2, col3):
     """
-    Beregner ukentlig standardavvik for tre kolonner i et datasett ved hjelp av SQL-spørring.
+    Beregner ukentlig standardavvik for tre kolonner i et datasett ved hjelp av pandas.
 
     Args:
         df (pd.DataFrame): DataFrame med værdata.
@@ -376,39 +383,43 @@ def calculate_weekly_std_dev(df, date, group, col1, col2, col3):
     Returns:
         pd.DataFrame: DataFrame med ukentlig standardavvik for col1, col2 og col3.
     """
-           
-    df[group] = pd.to_datetime(df[date]).dt.strftime('%Y-U%U')
-    
-    query = f"""
-        SELECT
-            {group},
-            SQRT(SUM(({col1} - (SELECT AVG({col1}) FROM df WHERE {group} = df.{group})) * 
-                      ({col1} - (SELECT AVG({col1}) FROM df WHERE {group} = df.{group}))) / 
-                      (COUNT({col1}) - 1)) AS StdDev_{col1},
-            SQRT(SUM(({col2} - (SELECT AVG({col2}) FROM df WHERE {group} = df.{group})) * 
-                      ({col2} - (SELECT AVG({col2}) FROM df WHERE {group} = df.{group}))) / 
-                      (COUNT({col2}) - 1)) AS StdDev_{col2},
-            SQRT(SUM(({col3} - (SELECT AVG({col3}) FROM df WHERE {group} = df.{group})) * 
-                      ({col3} - (SELECT AVG({col3}) FROM df WHERE {group} = df.{group}))) / 
-                      (COUNT({col3}) - 1)) AS StdDev_{col3}
-        FROM df
-        GROUP BY {group}
-        ORDER BY {group}
-    """
-    result = psql.sqldf(query, locals())
-    return result
+    try:
+        df[date] = pd.to_datetime(df[date])
+        df[group] = df[date].dt.strftime('%Y-U%U') 
+        
+        # Beregner ukentlig standardavvik
+        result = df.groupby(group)[[col1, col2, col3]].std().reset_index()
+        result.columns = [group, f'StdDev_{col1}', f'StdDev_{col2}', f'StdDev_{col3}']
+        return result
+    except Exception as e:
+        print(f"Feil ved beregning av ukentlig standardavvik: {e}")
+        return pd.DataFrame()
 
 def calculate_std_frost_weekly():
     """
-    Leser inn rengjorte værdata fra frostAPI og beregner ukentlig standardavvik for nedbør, temperatur og vindhastighet 
+    Leser inn rengjorte værdata fra Frost API og beregner ukentlig standardavvik for nedbør, temperatur og vindhastighet 
     ved å kalle den generelle funksjonen "calculate_weekly_std_dev".
-    
+
     Returns:
         pd.DataFrame: DataFrame med ukentlig standardavvik for nedbør, temperatur og vindhastighet.
     """
-    file_name = "../../data/clean_data/frostAPI_clean_data.json"  
-    data = pd.read_json(file_name)
-    df = pd.DataFrame(data)
+    file_path = "../../data/clean_data/frostAPI_clean_data.json"
+    
+    try:
+        df = pd.read_json(file_path)
+    except Exception as e:
+        print(f"Feil ved lesing av data: {e}")
+        return pd.DataFrame()
+
+    return calculate_weekly_std_dev(
+        df,
+        date="Dato",
+        group="Uke",
+        col1="Nedbør",
+        col2="Temperatur",
+        col3="Vindhastighet"
+    )
+
     
     return calculate_weekly_std_dev(
         df,
