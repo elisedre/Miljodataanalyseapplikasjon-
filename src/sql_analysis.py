@@ -420,16 +420,6 @@ def calculate_std_frost_weekly():
         col3="Vindhastighet"
     )
 
-    
-    return calculate_weekly_std_dev(
-        df,
-        date="Dato",
-        group="Uke",
-        col1="Nedbør",
-        col2="Temperatur",
-        col3="Vindhastighet"
-    )
-
 def analyze_correlation_between_weather_and_air_quality(
         df1, df2, date, weather1, airquality1, weather2, airquality2
 ):
@@ -451,37 +441,47 @@ def analyze_correlation_between_weather_and_air_quality(
     """
     
     # Merge DataFrames på dato
-    merged_df = pd.merge(df1, df2, on=date, how="inner")  
+    try:
+        merged_df = pd.merge(df1, df2, on=date, how="inner")  
+    except Exception as e:
+        raise RuntimeError(f"Feil under sammenslåing av DataFrames: {e}")
 
-    # SQL-spørring for å undersøke sammenhengen mellom første par 
-    query1 = f"""
-    SELECT {weather1}, {airquality1}
-    FROM merged_df
-    WHERE {weather1} IS NOT NULL AND {airquality1} IS NOT NULL
-    ORDER BY {weather1} DESC
-    """
-    result1 = psql.sqldf(query1, locals())
- 
+    try:
+        # SQL-spørring for å undersøke sammenhengen mellom første par 
+        query1 = f"""
+        SELECT {weather1}, {airquality1}
+        FROM merged_df
+        WHERE {weather1} IS NOT NULL AND {airquality1} IS NOT NULL
+        ORDER BY {weather1} DESC
+        """
+        result1 = psql.sqldf(query1, locals())
 
-    # SQL-spørring for å undersøke sammenhengen mellom andre par 
-    query2 = f"""
-    SELECT {weather2}, {airquality2}
-    FROM merged_df
-    WHERE {weather2} IS NOT NULL AND {airquality2} IS NOT NULL
-    ORDER BY {weather2} DESC
-    """
-    result2 = psql.sqldf(query2, locals())
-   
-    # Pearson-korrelasjon
-    # Lager ny df med relevante kolonner og dropper NaN-verdier
-    df_analyse = merged_df[[weather1, airquality1, weather2, airquality2]].dropna()
-    # Beregner korrelasjonene
-    korrelasjon_1= df_analyse[weather1].corr(df_analyse[airquality1], method='pearson')
-    korrelasjon_2 = df_analyse[weather2].corr(df_analyse[airquality2], method='pearson')
+        # SQL-spørring for å undersøke sammenhengen mellom andre par 
+        query2 = f"""
+        SELECT {weather2}, {airquality2}
+        FROM merged_df
+        WHERE {weather2} IS NOT NULL AND {airquality2} IS NOT NULL
+        ORDER BY {weather2} DESC
+        """
+        result2 = psql.sqldf(query2, locals())
+    
+    except Exception as e:
+        print(f"Feil under SQL-spørringer: {e}")
+        return None, None
 
+    try:
+        # Pearson-korrelasjon
+        # Lager ny df med relevante kolonner og dropper NaN-verdier
+        df_analyse = merged_df[[weather1, airquality1, weather2, airquality2]].dropna()
+        # Beregner korrelasjonene
+        korrelasjon_1= df_analyse[weather1].corr(df_analyse[airquality1], method='pearson')
+        korrelasjon_2 = df_analyse[weather2].corr(df_analyse[airquality2], method='pearson')
+    except Exception as e:
+        print(f"Feil under beregning av korrelasjon: {e}")
+        return None, None
+        
     print(f"Korrelasjon mellom {weather1} og {airquality1}: {korrelasjon_1}")
     print(f"Korrelasjon mellom {weather2} og {airquality2}: {korrelasjon_2}")
-
 
     #Visualisering av korrelasjonen 
     plt.figure(figsize = (12, 6))
@@ -511,13 +511,16 @@ def analyze_frost_nilu():
     Returns:
         tuple: Resultater fra SQL-spørringer og korrelasjonsberegninger.
     """
-    
-    with open("../data/clean_data/frostAPI_clean_data.json", "r") as frost_file, \
-         open("../data/clean_data/niluAPI_clean_data.json", "r") as nilu_file:
-        data_frost = json.load(frost_file)
-        data_nilu = json.load(nilu_file)
-    df_frost = pd.json_normalize(data_frost)
-    df_nilu = pd.json_normalize(data_nilu)
+    try:
+        with open("../data/clean_data/frostAPI_clean_data.json", "r") as frost_file, \
+            open("../data/clean_data/niluAPI_clean_data.json", "r") as nilu_file:
+            data_frost = json.load(frost_file)
+            data_nilu = json.load(nilu_file)
+        df_frost = pd.json_normalize(data_frost)
+        df_nilu = pd.json_normalize(data_nilu)
+    except Exception as e:
+        print(f"Feil ved lesing av data: {e}")
+        return None, None
 
     return analyze_correlation_between_weather_and_air_quality(
         df_frost, df_nilu,
