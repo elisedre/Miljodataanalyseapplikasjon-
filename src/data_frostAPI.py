@@ -169,7 +169,8 @@ def data_frostAPI(client_id):
     elements = {
         "mean(air_temperature P1D)": "Temperatur",
         "sum(precipitation_amount P1D)": "Nedbør",
-        "mean(wind_speed P1D)": "Vindhastighet"
+        "mean(wind_speed P1D)": "Vindhastighet",
+        "sourceId": "Stasjon"
     }
 
     raw_data = fetch_data_from_frostAPI(endpoint, parameters, client_id)
@@ -182,8 +183,8 @@ def data_frostAPI(client_id):
     save_data_as_json(
         data=processed_data,
         file=file,
-        index_columns=["Dato"],
-        value_columns=list(elements.values()),
+        index_columns=["Dato", "Stasjon"],
+        value_columns=[v for v in elements.values() if v != "Stasjon"],
         aggfunc="mean"
     )
 
