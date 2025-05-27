@@ -23,9 +23,12 @@ Prosjektet er strukturert slik at alt arbeid relatert til Frost API er samlet i 
 
 ```
 notebooks/
-├── frostAPI.ipynb     
-├── niluAPI.ipynb         
-├── combined_analysis.ipynb           
+├── frostAPI/
+│   └── frostAPI.ipynb     
+├── niluAPI/
+│   └── niluAPI.ipynb         
+├── combined/
+│   └── combined_analysis.ipynb           
 └── README.md  
 ```
 
