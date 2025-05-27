@@ -19,14 +19,14 @@ def get_raw_data_niluAPI():
     radius = 20
 
     endpoint = f"{base_url}/{from_date}/{to_date}/{latitude}/{longitude}/{radius}"
-    output_file = "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    output_file = "../../data/raw_data/niluAPI_data.json"
 
     raw_data = fetch_raw_data_niluAPI(endpoint)
     if not raw_data:
         return pd.DataFrame()
 
     processed_data = process_raw_data(raw_data)
-    save_to_json(processed_data, output_file)
+    save_to_json(processed_data, output_file=output_file)
 
 def check_and_clean_nilu_duplicates():
     """
@@ -36,7 +36,7 @@ def check_and_clean_nilu_duplicates():
         pd.DataFrame: Renset DataFrame uten duplikat-datoer.
     """
     from frostAPI.clean_data_frost import print_duplicate_rows, remove_duplicate_dates
-    filepath = "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    filepath = "../../data/raw_data/niluAPI_data.json"
     df = pd.read_json(filepath)
     subset = ["Dato"]
 
@@ -58,7 +58,7 @@ def analyze_outliers_nilu():
     Leser Frost API-data fra en JSON-fil, analyserer og visualiserer outliers.
     """
     from frostAPI.clean_data_frost import analyze_and_plot_outliers
-    df_frost = pd.read_json("../../data/raw_data/raw_air_quality_nilu_oslo.json")
+    df_frost = pd.read_json("../../data/raw_data/niluAPI_data.json")
     variables = ['Verdi_NO2', 'Verdi_SO2', 'Verdi_O3']
     threshold = 3
 
@@ -69,7 +69,7 @@ def clean_raw_data():
     Henter rådata fra NILU API, fjerner outliers og interpolerer manglende verdier.
     Lagrer deretter renset data i en JSON-fil.
     """
-    raw_data_file = "../../data/raw_data/raw_air_quality_nilu_oslo.json"
+    raw_data_file = "../../data/raw_data/niluAPI_data.json"
     clean_data_file = "../../data/clean_data/niluAPI_clean_data.json"
     cols = ["Verdi_NO2", "Verdi_O3", "Verdi_SO2"]
     from_date = "2010-04-02"
