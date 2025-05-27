@@ -5,7 +5,7 @@ from sklearn.linear_model import LinearRegression
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from kombinert_analyse import (
+from combined.combined_analysis import (
     train_model,
     evaluate_and_train_model)
 

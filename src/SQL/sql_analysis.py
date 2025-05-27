@@ -415,8 +415,8 @@ def analyze_frost_nilu():
         tuple: Resultater fra korrelasjonsanalyse.
     """
     # Leser inn ferdig rensede data ved hjelp av gjenbrukbar funksjon
-    df_frost = load_clean_data("../data/clean_data/frostAPI_clean_data.json")
-    df_nilu = load_clean_data("../data/clean_data/niluAPI_clean_data.json")
+    df_frost = load_clean_data("../../data/clean_data/frostAPI_clean_data.json")
+    df_nilu = load_clean_data("../../data/clean_data/niluAPI_clean_data.json")
 
     # Sjekk om dataene er lastet inn riktig
     if df_frost.empty or df_nilu.empty:

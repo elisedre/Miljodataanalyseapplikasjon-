@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from kombinert_analyse import (
+from combined.combined_analysis import (
     add_seasonal_features,
     predict_feature_values,
     train_model)

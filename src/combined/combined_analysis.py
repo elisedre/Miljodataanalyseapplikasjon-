@@ -139,8 +139,8 @@ def load_merge_and_plot_no2_temp():
     og plotter NO₂ og temperatur over tid.
     """
     merged_df = combine_df(
-        "../data/clean_data/frostAPI_clean_data.json",
-        "../data/clean_data/niluAPI_clean_data.json",
+        "../../data/clean_data/frostAPI_clean_data.json",
+        "../../data/clean_data/niluAPI_clean_data.json",
         "Dato"
     )
     if merged_df is not None and not merged_df.empty:
