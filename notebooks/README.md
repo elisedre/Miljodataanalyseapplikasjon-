@@ -16,7 +16,7 @@ Ved gjennomgang av hver notebook vil man oppnå en oversikt over prosjektet. De 
 Prosjektet er strukturert slik at alt arbeid relatert til Frost API er samlet i én notebook ([frostAPI.ipynb](../notebooks/frostAPI/frostAPI.ipynb)), alt arbeid relatert til NILU API er samlet i én notebook ([niluAPI.ipynb](../notebooks/niluAPI/niluAPI.ipynb)), mens analyser og sammenligninger som involverer begge datasett er samlet i en felles notebook ([combined_analysis.ipynb](../notebooks/combined/combined_analysis.ipynb.)). Dette gir en ryddig og logisk arbeidsflyt, der hver notebook har et tydelig fokusområde. 
 
 ```
-├── src/
+├── notebook/
 │   ├── frostAPI/              
 │   │   ├──  frostAPI.ipynb 
 │   │   │

@@ -45,3 +45,4 @@
 | -------- | ----------- |
 | [Refleksjonsnotat](../Miljodataanalyseapplikasjon-/docs/refleksjonsnotat.md) | Tanker og erfaringer fra prosjektet  |
 | [Releasenote](../Miljodataanalyseapplikasjon-/releasenote.md) | Versjonsbeskrivelse  |
+[KI-deklarasjon](../Miljodataanalyseapplikasjon--1/docs/ki/Signert_KI_deklarasjon.pdf) | Signert KI-deklarasjon |
