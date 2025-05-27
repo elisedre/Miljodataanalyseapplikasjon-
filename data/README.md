@@ -23,7 +23,7 @@ data/
 │   └── niluAPI_clean_data.json
 ├── raw_data/
 │   ├── frostAPI_data.json
-│   └── raw_air_quality_nilu_oslo.json
+│   └── niluAPI_data.json
 └── README.md
 ```
 - **[raw_data/](../data/raw_data/)**: Inneholder rådata hentet direkte fra API-ene.
