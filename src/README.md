@@ -1,7 +1,9 @@
 # 🧠 README for `src`-mappen
 
 ## 1. Introduksjon
-`src`-mappen inneholder all kildekode for prosjektets kjernelogikk i form av funksjoner. Funksjonene i denne mappen importeres og benyttes i Notebooks-mappen.  
+`src`-mappen inneholder all kildekode for prosjektets kjernelogikk i form av funksjoner. Funksjonene i denne mappen importeres og benyttes i Notebooks-mappen. 
+
+---
 
 ## 2. 📁 Mappestruktur 
 ```
@@ -22,20 +24,27 @@
 │   │   ├── main_nilu.py    
 │   │   └── visualization_nilu.py   
 │   │
-│   ├── combined_analysis/      
+│   ├── combined/      
 │   │   └── combined_analysis.py
 │   │
+│   ├── SQL/           
+│   │   └── sql_analysis.py
+│   │ 
 │   ├── README.md     
 │   │
-│   └── sql_analysis/           
-│       └── sql_analysis.py
+
 ```
-Begrunnelse for filstrukturen:
+
+---
+
+### Begrunnelse for filstrukturen:
 
 - Delte opp APIene i separate mapper for bedre oversikt
 - At hver mappe er "oppgavefordelt" bidrar også til bedre orden - klare, beskrivende filnavn gjør det intuitivt å finne relevant kode for hvert steg i prosessen.
-- Mappen `combined_analysis` gjør det tydelig at funksjonene gjelder flere datakilder.
-- Alle moduler ligger under `src/` for å samle alt kodearbeid på ett sted - god kodepraksis 
+- Mappen `combined` gjør det tydelig at funksjonene gjelder flere datakilder.
+- Alle moduler ligger under `src/` for å samle alt kodearbeid på ett sted 
+
+---
 
 ## Filbeskrivelser 
 
@@ -81,13 +90,13 @@ Begrunnelse for filstrukturen:
 
 ---
 
-### `src/combined_analysis/`
+### `src/combined/`
 - **`combined_analysis.py`**  
   Funksjoner for å kombinere og analysere data på tvers av Frost API og NILU API for helhetlig innsikt.
 
 ---
 
-### `src/sql_analysis/`
+### `src/SQL/`
 - **`sql_analysis.py`**  
   Skript for SQL-basert analyse av data, inkludert spørringer og oppsett.
 
@@ -96,6 +105,7 @@ Begrunnelse for filstrukturen:
 ### `src/README.md`
 - Prosjektdokumentasjon som forklarer struktur, formål og samspill mellom moduler.
 
+---
 
 ## Konvensjoner i `src/` 
 
