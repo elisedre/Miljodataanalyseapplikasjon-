@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 # Importer funksjonene fra ditt modul
-from data_frostAPI import (analyse_skewness, fix_skewness)
+from frostAPI.analyze_data_frost import (analyse_skewness, fix_skewness)
 
 class TestSkewnessFunctions(unittest.TestCase):
 

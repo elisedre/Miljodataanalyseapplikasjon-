@@ -1,14 +1,12 @@
 import unittest
-from unittest.mock import patch, Mock
 import os
-from io import StringIO
 import sys
 import pandas as pd
 
 # Legg til src-mappen i path slik at modulen kan importeres
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from data_frostAPI import (
+from frostAPI.clean_data_frost import (
     calculate_outlier_limits,
     remove_duplicate_dates,
     label_station,

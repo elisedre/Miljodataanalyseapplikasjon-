@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
-from data_niluAPI import (
+from niluAPI.clean_data_nilu import (
     remove_outliers, #må splitte opp i flere funskjoner for å teste
     interpolate_data,
     save_clean_data

@@ -6,7 +6,7 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
-from data_niluAPI import analyse_skewness, fix_skewness
+from niluAPI.analyze_data_nilu import analyse_skewness, fix_skewness
 
 class TestSkewnessNILU(unittest.TestCase):
 

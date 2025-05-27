@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import patch, Mock
-import json
 import os
 from io import StringIO
 import requests
@@ -9,14 +8,16 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from data_frostAPI import (
+from frostAPI.fetch_frostapi import (
     fetch_data_from_frostAPI,
     get_info_frostAPI,
+    process_weather_data,
+    save_data_as_json)
+
+from frostAPI.main_frost import (
     get_elements_frostAPI,
     get_stations_frostAPI,
-    process_weather_data,
-    data_frostAPI, 
-    save_data_as_json)
+    data_frostAPI)
 
 class TestFetchFunctions(unittest.TestCase):
 
@@ -123,3 +124,4 @@ class TestFetchFunctions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

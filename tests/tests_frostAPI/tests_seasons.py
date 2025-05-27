@@ -7,7 +7,7 @@ import os
 # Legg til sti til src-mappen for å kunne importere funksjoner
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from data_frostAPI import (get_season, calculate_seasonal_stats)
+from frostAPI.visualization_frost import (get_season, calculate_seasonal_stats)
 
 
 class TestSeasonalAnalysis(unittest.TestCase):

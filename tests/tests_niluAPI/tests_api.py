@@ -9,7 +9,7 @@ from requests.exceptions import RequestException
 # Legg til src-stien hvis nødvendig
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
 
-from data_niluAPI import fetch_raw_data_niluAPI, process_raw_data, save_to_json
+from niluAPI.fetch_niluAPI import fetch_raw_data_niluAPI, process_raw_data, save_to_json
 
 class TestNILUFunctions(unittest.TestCase):
 
