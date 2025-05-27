@@ -5,7 +5,7 @@
 | -------- | ----------- |
 | [README - hoved](../Miljodataanalyseapplikasjon-/README.md) | Hovedoversikt over prosjektet |
 |  [README - notebooks](../Miljodataanalyseapplikasjon-/notebooks/README.md) | Beskrivelse av notebook-strukturen |
-|  [README - src](../Miljodataanalyseapplikasjon-/data/README.md) | Beskrivelse av kildekode og funksjoner  |
+|  [README - src](../Miljodataanalyseapplikasjon-/src/README.md) | Beskrivelse av kildekode og funksjoner  |
 | [README - data](../Miljodataanalyseapplikasjon-/data/README.md)| Beskrivelse av datasettene
 |  [README - tests](../Miljodataanalyseapplikasjon-/tests/README.md) | Informasjon om enhetstester  |
 
@@ -14,7 +14,7 @@
 | -------- | ----------- |
 | [frostAPI.ipynb](../Miljodataanalyseapplikasjon-/notebooks/frostAPI/frostAPI.ipynb) | Datahenting og analyse fra Frost API (værdata)  |
 | [niluAPI.ipynb](../Miljodataanalyseapplikasjon-/notebooks/niluAPI/niluAPI.ipynb) | Datahenting og analyse fra NILU API (luftkvalitet)  |
-| [Kombinert_analyse.ipynb](../Miljodataanalyseapplikasjon-/notebooks/Kombinert_analyse.ipynb) | Kombinert analyse av miljødata fra begge kilder  |
+| [combined_analysis.ipynb](../Miljodataanalyseapplikasjon-/notebooks/combined/combined_analysis.ipynb) | Kombinert analyse av miljødata fra begge kilder  |
 
 ## Data  
 | Ressurs | Beskrivelse |
@@ -26,21 +26,22 @@
 
 
 ## Kildekode  
-| Modul | Beskrivelse |
+| Modulmappe | Beskrivelse |
 | ----- | ----------- |
-| [data_frostAPI.py](../Miljodataanalyseapplikasjon-/src/frostAPI/data_frostAPI.py) | Funksjoner for datainnhenting, behandling og analyse fra Frost API |
-| [data_niluAPI.py](../Miljodataanalyseapplikasjon-/src/niluAPI/data_niluAPI.py)| Funksjoner for datainnhenting, behandling og analyse fra NILU API |
-| [kombinert_analyse.py](../Miljodataanalyseapplikasjon-/src/kombinert_analyse.py)| Funksjoner for analyse for Frost API og NILU API |
-| [sql_analysis.py](../Miljodataanalyseapplikasjon-/src/sql_analysis.py) | Funksjoner som bruker SQL for analyse |
+| [frostAPI/](../Miljodataanalyseapplikasjon-/src/frostAPI/) | Funksjoner for datainnhenting, behandling og analyse fra Frost API |
+| [niluAPI/](../Miljodataanalyseapplikasjon-/src/niluAPI/)| Funksjoner for datainnhenting, behandling og analyse fra NILU API |
+| [combined/](../Miljodataanalyseapplikasjon-/src/combined/)| Funksjoner for analyse for Frost API og NILU API |
+| [SQL/](../Miljodataanalyseapplikasjon-/src/SQL/) | Funksjoner som bruker SQL for analyse |
 
 ## Tester 
 | Testmappe | Beskrivelse |
 | --------- | ----------- |
-| [tests_frostAPI.py](../Miljodataanalyseapplikasjon-/tests/tests_frostAPI.py)| Enhetstester for funksjonene knyttet til Frost API |
-| [tests_niluAPI.py](../Miljodataanalyseapplikasjon-/tests/tests_niluAPI.py)| Enhetstester for funksjonene knyttet til NILU API |
-| [tests_kombinert_analyse.py](../Miljodataanalyseapplikasjon-/tests/tests_kombinert_analyse.py)| Enhetstester for funksjonene knyttet til kombinert analyse |
+| [tests_frostAPI.py](../Miljodataanalyseapplikasjon-/tests/tests_frostAPI/)| Enhetstester for funksjonene knyttet til Frost API |
+| [tests_niluAPI.py](../Miljodataanalyseapplikasjon-/tests/tests_niluAPI/)| Enhetstester for funksjonene knyttet til NILU API |
+| [tests_combined_analysis.py](../Miljodataanalyseapplikasjon-/tests/tests_combined_analysis/)| Enhetstester for funksjonene knyttet til kombinert analyse |
 
-##  Refleksjon  
+##  Ekstra  
 | Dokument | Beskrivelse |
 | -------- | ----------- |
-| [Refleksjonsnotat](legg-inn-lenke-her) | Tanker og erfaringer fra prosjektet  |
+| [Refleksjonsnotat](../Miljodataanalyseapplikasjon-/docs/refleksjonsnotat.md) | Tanker og erfaringer fra prosjektet  |
+| [Releasenote](../Miljodataanalyseapplikasjon-/releasenote.md) | Versjonsbeskrivelse  |
