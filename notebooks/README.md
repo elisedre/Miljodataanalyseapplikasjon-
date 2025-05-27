@@ -1,12 +1,6 @@
 # 📚 Innhold og struktur: Notebooks
 
-*Beskriver innholdet i den enkelte notebook, forklarer strukturen og hvorfor vi har valgt å gjøre det slik.*
-
-## Innhold
-
-- Beskrivelse
-- Struktur
-- Innhold i notebooks
+Mappen `notebooks` inneholder Jupyter Notebooks som brukes til å utføre og dokumentere ulike deler av prosjektet. Hver notebook er strukturert for å dekke  oppgavene kronologisk med datainnsamling, rensing, analyse og visualisering. Dette gir en tydelig arbeidsflyt og gjør det enklere å forstå og reprodusere resultatene.
 
 ## Beskrivelse
 
@@ -19,26 +13,24 @@ Ved gjennomgang av hver notebook vil man oppnå en oversikt over prosjektet. De 
 
 ## Struktur
 
-Prosjektet er strukturert slik at alt arbeid relatert til Frost API er samlet i én notebook ([frostAPI.ipynb](../notebooks/frostAPI/frostAPI.ipynb)), alt arbeid relatert til NILU API er samlet i én notebook ([niluAPI.ipynb](../notebooks/niluAPI/niluAPI.ipynb)), mens analyser og sammenligninger som involverer begge datasett er samlet i en felles notebook ([combined_analysis.ipynb](../notebooks/combined/combined_analysis.ipynb)). Dette gir en ryddig og logisk arbeidsflyt, der hver notebook har et tydelig fokusområde. 
+Prosjektet er strukturert slik at alt arbeid relatert til Frost API er samlet i én notebook ([frostAPI.ipynb](../notebooks/frostAPI/frostAPI.ipynb)), alt arbeid relatert til NILU API er samlet i én notebook ([niluAPI.ipynb](../notebooks/niluAPI/niluAPI.ipynb)), mens analyser og sammenligninger som involverer begge datasett er samlet i en felles notebook ([combined_analysis.ipynb](../notebooks/combined/combined_analysis.ipynb.)). Dette gir en ryddig og logisk arbeidsflyt, der hver notebook har et tydelig fokusområde. 
 
 ```
-notebooks/
-├── frostAPI/
-│   └── frostAPI.ipynb     
-├── niluAPI/
-│   └── niluAPI.ipynb         
-├── combined/
-│   └── combined_analysis.ipynb           
-└── README.md  
+├── src/
+│   ├── frostAPI/              
+│   │   ├──  frostAPI.ipynb 
+│   │   │
+│   ├── niluAPI/              
+│   │   ├──  niluAPI.ipynb 
+│   │   │
+│   ├── combined/              
+│   │   ├──  combined_analysis.ipynb 
+
 ```
 
 ## Innhold i notebooks
 
-Her følger en beskrivelse av innholdet og hovedfokuset i hver notebook:
-
----
-
-### `frostAPI.ipynb`
+### `frostAPI/frostAPI.ipynb`
 Denne notebooken tar for seg hele arbeidsflyten for værdata hentet fra Frost API.
 
 **Innhold:**
@@ -51,7 +43,7 @@ Denne notebooken tar for seg hele arbeidsflyten for værdata hentet fra Frost AP
 
 ---
 
-### `niluAPI.ipynb`
+### `niluAPI/niluAPI.ipynb`
 Denne notebooken håndterer luftkvalitetsdata fra NILU API.  
 
 **Innhold:**

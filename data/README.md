@@ -1,13 +1,6 @@
 # 💾 Datasettvalg for miljøanalyse
 
-*Beskriver valg av datasett samt hvordan disse er gruppert og tankene våre bak dette.*
-
-## Innhold
-
-- Struktur
-- Beskrivelse av valgte datasett
-- Bakgrunn for valg av parametere 
-- Bakgrunn for valg av API
+I dette prosjektet har vi valgt datasett som gir innsikt i miljøforholdene over tid, med fokus på værdata og luftkvalitet. Datasettvalgene er gjort for å dekke ulike aspekter av miljøanalyse, som temperatur, nedbør, vindhastighet og luftforurensning. Disse datasettene er hentet fra pålitelige kilder som Frost API og NILU API.
 
 ## Struktur 
 

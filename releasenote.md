@@ -44,6 +44,5 @@ Applikasjonen henter vær- og luftkvalitetsdata fra **Frost API** og **NILU API*
 - Ytterligere prediktiv analyse
 
 
-
 #### Ansvarlige utviklere 
 Kaja Aamlid, Elise Dreiem, Josefine Huffman
