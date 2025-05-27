@@ -8,6 +8,8 @@ Prosjektet er en besvarelse på årets eksamensoppgave i **TDT4114 Anvendt progr
 - Gjennomføre analyse gjennom utforskning av trender og undersøkelser av sammenhenger. 
 - Visualisere data for bedre innsikt
 
+**GitHub_URL = https://github.com/elisedre/Miljodataanalyseapplikasjon-.git**
+
 ## 🗂️ Mappestruktur
 
 **Legger til mappestrukturen her når prosjektet er ferdigstilt**
@@ -77,7 +79,7 @@ For å kunne kjøre prosjektet og reprodusere resultatene, må følgende forutse
 1. Klon prosjektet fra GitHub:
 
 ```bash
-git clone https://github.com/elisedre/Miljodataanalyseapplikasjon.git
+git clone https://github.com/elisedre/Miljodataanalyseapplikasjon-.git
 cd Miljodataanalyseapplikasjon 
 ```
 

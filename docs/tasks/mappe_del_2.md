@@ -1,5 +1,7 @@
 # Mappe del 2
 
+GitHub_URL = https://github.com/elisedre/Miljodataanalyseapplikasjon-.git
+
 ## Oppgaver: Oversikt
 
 I mappe del 2 bygger vi videre på prosjektet gjennom følgende tilleggsoppgaver: Oppgave 4 krever bruk av verktøy som NumPy og Pandas for å analysere dataene og beregne statistiske mål som gjennomsnitt og standardavvik. I oppgave 5 skal dere lage informative visualiseringer av de analyserte dataene ved hjelp av Matplotlib, og eventuelt utforske interaktive visualiseringer. I oppgave 6 fokuserer dere på prediktiv analyse ved å implementere lineær regresjon for å forutsi fremtidige miljøforhold basert på historiske data. Til slutt, i oppgave 7 skal dere reflektere over læringsprosessen, erfaringer og vurderinger av prosjektet (maks 800 ord).
