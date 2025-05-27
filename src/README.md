@@ -1,38 +1,101 @@
-# README for `src`-mappen
+# 🧠 README for `src`-mappen
 
 ## 1. Introduksjon
 `src`-mappen inneholder all kildekode for prosjektets kjernelogikk i form av funksjoner. Funksjonene i denne mappen importeres og benyttes i Notebooks-mappen.  
 
-## 2. Mappestruktur (ikke ferdig)
+## 2. 📁 Mappestruktur 
+```
+├── src/
+│   ├── frostAPI/              
+│   │   ├── _init_.py      
+│   │   ├── analyze_data_frost.py      
+│   │   └── clean_data_frost.py 
+│   │   ├── fetch_frostapi.py     
+│   │   ├── main_frost.py    
+│   │   └── visualization_frost.py
+│   │   
+│   ├── niluAPI/              
+│   │   ├── _init_.py      
+│   │   ├── analyze_data_nilu.py      
+│   │   └── clean_data_nilu.py 
+│   │   ├── fetch_niluapi.py     
+│   │   ├── main_nilu.py    
+│   │   └── visualization_nilu.py   
+│   │
+│   ├── combined_analysis/      
+│   │   └── combined_analysis.py
+│   │
+│   ├── README.md     
+│   │
+│   └── sql_analysis/           
+│       └── sql_analysis.py
+```
+Begrunnelse for filstrukturen:
 
-## Filbeskrivelser (ikke ferdig)
+- Delte opp APIene i separate mapper for bedre oversikt
+- At hver mappe er "oppgavefordelt" bidrar også til bedre orden - klare, beskrivende filnavn gjør det intuitivt å finne relevant kode for hvert steg i prosessen.
+- Mappen `combined_analysis` gjør det tydelig at funksjonene gjelder flere datakilder.
+- Alle moduler ligger under `src/` for å samle alt kodearbeid på ett sted - god kodepraksis 
 
+## Filbeskrivelser 
 
-### `data_frostAPI.py`
+### `src/frostAPI/`
+- **`fetch_frostapi.py`**  
+  Funksjoner for å hente værdata fra Frost API. Inneholder API-kall, autentisering og datainnhenting.
 
-- **API-integrasjon**: Uthenting av elementer, stasjoner og observasjonsdata fra Frost API.
-- **Dataprosessering**: Strukturering, aggregering og lagring av JSON-data.
-- **Datakvalitet**: Håndtering av duplikater, outliers og manglende verdier.
-- **Analyse**: Statistikk, skjevhet, transformasjoner og sesongtrender.
-- **Visualisering**: Histogrammer, outliers og tidsserieanalyse.
+- **`clean_data_frost.py`**  
+  Funksjoner for rensing og klargjøring av rådata fra Frost API. Håndterer uteliggere, manglende verdier og formatering.
 
-### `data_niluAPI.py`
+- **`analyze_data_frost.py`**  
+  Analysefunksjoner for Frost-data, inkludert statistikk, trender og korrelasjonsanalyser.
 
-- **API-integrasjon**: Uthenting av observasjonsdata fra Nilu API.
-- **Dataprosessering**: Strukturering, aggregering og lagring av JSON-data.
-- **Datakvalitet**: Håndtering av duplikater, outliers og manglende verdier.
-- **Analyse**: Statistikk, skjevhet og transformasjoner.
-- **Visualisering**: Histogrammer, outliers og tidsserieanalyse.
+- **`visualization_frost.py`**  
+  Kode for visualisering av Frost-data med grafer og diagrammer.
 
-### `kombinert_analyse.py`
+- **`main_frost.py`**  
+  Hovedfil for å kjøre hele prosessen med Frost API-data: henting, rensing, analyse og visualisering.
 
-- Kombinerer og sammenligner Frost- og NILU-data for felles analyse.
-
-### `analysis_sql.py`
-
-- Benytter SQL (via `pandasql`) til analyse direkte på Pandas-dataframes.
+- **`__init__.py`**  
+  Gjør `frostAPI` til en Python-pakke.
 
 ---
+
+### `src/niluAPI/`
+- **`fetch_niluapi.py`**  
+  Funksjoner for henting av luftkvalitetsdata fra NILU API.
+
+- **`clean_data_nilu.py`**  
+  Rensing og preprosessering av rå NILU-data, inkludert behandling av uteliggere og manglende verdier.
+
+- **`analyze_data_nilu.py`**  
+  Analysefunksjoner for NILU-data, for eksempel statistikk og mønstergjenkjenning.
+
+- **`visualization_nilu.py`**  
+  Visualisering av NILU-data gjennom plott og grafer.
+
+- **`main_nilu.py`**  
+  Hovedfil for å kjøre hele NILU API-dataflyten fra henting til analyse.
+
+- **`__init__.py`**  
+  Gjør `niluAPI` til en Python-pakke.
+
+---
+
+### `src/combined_analysis/`
+- **`combined_analysis.py`**  
+  Funksjoner for å kombinere og analysere data på tvers av Frost API og NILU API for helhetlig innsikt.
+
+---
+
+### `src/sql_analysis/`
+- **`sql_analysis.py`**  
+  Skript for SQL-basert analyse av data, inkludert spørringer og oppsett.
+
+---
+
+### `src/README.md`
+- Prosjektdokumentasjon som forklarer struktur, formål og samspill mellom moduler.
+
 
 ## Konvensjoner i `src/` 
 
@@ -95,13 +158,14 @@ def funksjonsnavn(param1, param2, ...):
 
 --- 
 
-## 4. Nøkkelhåndtering
+## 4.  🔑 Nøkkelhåndtering
 - **Frost API** krever en klient-ID (API-nøkkel), som lastes inn fra en `.env`-fil.
 - **NILU API** er offentlig og krever ingen autorisering.
 
 ---
 
-## 5. Avhengigheter (ikke ferdig)
+## 5. 🔗 Avhengigheter
+
 For å kjøre koden i `src`-mappen, trenger du følgende Python-moduler:
 
 - **`requests`**: For å sende HTTP-forespørsler til API-ene (NILU og Frost).
@@ -110,8 +174,16 @@ For å kjøre koden i `src`-mappen, trenger du følgende Python-moduler:
 - **`matplotlib`**: For å lage statiske grafer og visualisere tidsseriedata.
 - **`seaborn`**: For avanserte visualiseringer og distribusjonsgrafer.
 - **`scipy`**: For statistiske beregninger, som korrelasjonsanalyse (`pearsonr`).
-- **`scikit-learn`**: For datatransformasjoner, som `PowerTransformer` og skalering med `StandardScaler`.
+- **`scikit-learn`**: For datatransformasjoner, maskinlæring, `PowerTransformer`, `StandardScaler`, `LinearRegression`, m.m.
 - **`plotly`**: For å lage interaktive grafer i Jupyter Notebooks.
 - **`pandasql`**: For å utføre SQL-spørringer på Pandas DataFrames.
 - **`json`**: For å lese og skrive JSON-data (innebygd i Python).
+- **`os`**: For filhåndtering og miljøvariabler (innebygd i Python).
+- **`sys`**: For å endre søkestier og systemspesifikke funksjoner (innebygd i Python).
+- **`dotenv`**: For å laste inn miljøvariabler fra `.env`-filer.
+- **`missingno`**: For å visualisere manglende data.
+- **`lightgbm`**: For maskinlæringsmodellen `LGBMRegressor`.
+- **`datetime`**: For håndtering av datoer og tid (innebygd i Python).
 
+
+> Alle nødvendige pakker kan installeres med `pip install -r requirements.txt`.
