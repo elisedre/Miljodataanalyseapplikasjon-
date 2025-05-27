@@ -10,10 +10,10 @@ import seaborn as sns
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 import missingno as msno
 from sklearn.preprocessing import LabelEncoder
-from fetch_frostapi import get_info_frostAPI, fetch_data_from_frostAPI, process_weather_data, save_data_as_json
-from clean_data_frost import print_duplicate_rows, remove_duplicate_dates, interpolate_data, save_data_json, analyze_and_plot_outliers
-from analyze_data_frost import analyse_skewness, fix_skewness
-from visualization_frost import calculate_seasonal_stats, plot_seasonal_bars
+from .fetch_frostapi import get_info_frostAPI, fetch_data_from_frostAPI, process_weather_data, save_data_as_json
+from .clean_data_frost import print_duplicate_rows, remove_duplicate_dates, interpolate_data, save_data_json, analyze_and_plot_outliers
+from .analyze_data_frost import analyse_skewness, fix_skewness
+from .visualization_frost import calculate_seasonal_stats, plot_seasonal_bars
 
 
 def get_elements_frostAPI(client_id):
@@ -162,7 +162,7 @@ def clean_data_frostAPI(threshold=3):
     
 
     # Fjern outliers fra rådataene
-    from data_niluAPI import remove_outliers
+    from niluAPI.clean_data_nilu import remove_outliers
     pivot_df = remove_outliers(raw_data_file, cols, threshold=threshold)
 
     #Sjekker og fjerner duplikater
