@@ -16,21 +16,22 @@ Prosjektet er en besvarelse på årets eksamensoppgave i **TDT4114 Anvendt progr
 
 ## ▶️ Gjennomkjøring av prosjektet
 Prosjektet er strukturert slik at hovedarbeidet utføres i Jupyter Notebooks:
-- [Prosjekt Frost API](../notebooks/frostAPI/frostAPI.ipynb)
-- [Prosjekt NILU API](../notebooks/niluAPI/niluAPI.ipynb)
-- [Kombinert analyse](../notebooks/combined/combined_analysis.ipynb)
+- [Prosjekt Frost API](../Miljodataanalyseapplikasjon--1/notebooks/frostAPI/frostAPI.ipynb)
+- [Prosjekt NILU API](../Miljodataanalyseapplikasjon--1/notebooks/niluAPI/niluAPI.ipynb)
+- [Kombinert analyse](../Miljodataanalyseapplikasjon--1/notebooks/combined/combined_analysis.ipynb)
+
 
 I notebookene går vi steg for steg gjennom datainnhenting, rensing, analyse og visualisering. Denne strukturen er valgt for å gi en logisk og modulær gjennomgang av prosjektet - vi oppnår en tydelig progresjon fra enkeltdatakilder til sammensatt analyse.
 
 For å holde fremvisningen ryddig og oversiktlig er alle funksjoner som håndterer API-kall, databehandling og analyser samlet i Python-moduler plassert i `src`-mappen:
-- [frostAPI/frostAPI.py](../src/frostAPI/data_frostAPI.py)
-- [niluAPI/niluAPI.py](../src/niluAPI/data_niluAPI.py)
-- [combined/combined_analysis.py](../src/combined/combined_analysis.py)
-- [sql_analysis.py](../src/SQL/sql_analysis.py)
+- [frostAPI/frostAPI.py](../Miljodataanalyseapplikasjon--1/src/frostAPI)
+- [niluAPI/niluAPI.py](../Miljodataanalyseapplikasjon--1/src/niluAPI)
+- [combined/combined_analysis.py](../Miljodataanalyseapplikasjon--1/src/combined)
+- [sql_analysis.py](../Miljodataanalyseapplikasjon--1/src/SQL)
 
 ### Anbefalt gjennomkjøring:
 
-Start med [Prosjekt Frost API](../notebooks/frostAPI/frostAPI.ipynb) og følg deretter notebookene videre for å få en full oversikt over hele arbeidsflyten og analysene. 
+Start med [Prosjekt Frost API](../Miljodataanalyseapplikasjon--1/notebooks/frostAPI/frostAPI.ipynb) og følg deretter notebookene videre for å få en full oversikt over hele arbeidsflyten og analysene. 
 
 ## ✅ Forutsetninger for gjennomkjøring
 
