@@ -25,7 +25,7 @@ class TestFetchFunctions(unittest.TestCase):
         #Tester at data hentes riktig fra API når responsen er vellykket
         mock_response = Mock(status_code=200)
         mock_response.json.return_value = {"data": [{"mock": "value"}]}
-        with patch("data_frostAPI.requests.get", return_value=mock_response):
+        with patch("frostAPI.fetch_frostapi.requests.get", return_value=mock_response):
             result = fetch_data_from_frostAPI("test_endpoint", "test_id", ["air_temperature"])
             self.assertEqual(result, [{"mock": "value"}])
 
@@ -33,11 +33,11 @@ class TestFetchFunctions(unittest.TestCase):
         #Tester at funksjonen returnerer tom liste ved HTTP-feil (f.eks. 404)
         mock_response = Mock(status_code=404, text="Not Found")
         mock_response.json.return_value = {}
-        with patch("data_frostAPI.requests.get", return_value=mock_response):
+        with patch("frostAPI.fetch_frostapi.requests.get", return_value=mock_response):
             result = fetch_data_from_frostAPI("test_endpoint", {}, "test_id")
             self.assertEqual(result, [])
 
-    @patch("data_frostAPI.requests.get")
+    @patch("frostAPI.fetch_frostapi.requests.get")
     def test_get_info_success(self, mock_get):
         #Tester at get_info_frostAPI returnerer elementer og skriver navn til konsoll
         mock_get.return_value = Mock(status_code=200)
@@ -49,13 +49,13 @@ class TestFetchFunctions(unittest.TestCase):
             self.assertEqual(len(result), 2)
             self.assertIn("Element1", fake_out.getvalue())
 
-    @patch("data_frostAPI.get_info_frostAPI")
+    @patch("frostAPI.main_frost.get_info_frostAPI")
     def test_get_elements_wrapper(self, mock_info):
         #Tester at get_elements_frostAPI bare kaller get_info_frostAPI
         get_elements_frostAPI("test_client")
         mock_info.assert_called_once()
 
-    @patch("data_frostAPI.get_info_frostAPI")
+    @patch("frostAPI.main_frost.get_info_frostAPI")
     def test_get_stations_wrapper(self, mock_info):
         #Tester at get_stations_frostAPI bare kaller get_info_frostAPI
         get_stations_frostAPI("test_client")
@@ -91,8 +91,8 @@ class TestFetchFunctions(unittest.TestCase):
         self.assertEqual(result[0]["Stasjon"], "SN123")
         self.assertNotIn("Temperatur", result[0])
 
-    @patch("data_frostAPI.fetch_data_from_frostAPI")
-    @patch("data_frostAPI.save_data_as_json")
+    @patch("frostAPI.main_frost.fetch_data_from_frostAPI")
+    @patch("frostAPI.main_frost.save_data_as_json")
     def test_data_frostAPI(self, mock_save, mock_fetch):
         # Tester at data_frostAPI kaller både fetch og lagring når det får data
         mock_fetch.return_value = [{
@@ -107,14 +107,14 @@ class TestFetchFunctions(unittest.TestCase):
         data_frostAPI("test_client")
         self.assertTrue(mock_save.called)
 
-    @patch("data_frostAPI.requests.get")
+    @patch("frostAPI.fetch_frostapi.requests.get")
     def test_get_info_error(self, mock_get):
         #Tester at funksjonen håndterer forespørselsfeil (f.eks. timeout) riktig
         mock_get.side_effect = requests.RequestException("Timeout")
         result = get_info_frostAPI("url", None, "client")
         self.assertIsNone(result)
 
-    @patch("data_frostAPI.pd.DataFrame.to_json")
+    @patch("frostAPI.fetch_frostapi.pd.DataFrame.to_json")
     def test_save_data_as_json(self, mock_to_json):
         # Tester at save_data_as_json forsøker å skrive til JSON
         data = [{"Dato": "2023-01-01", "Stasjon": "S1", "Temperatur": 4.0}]
