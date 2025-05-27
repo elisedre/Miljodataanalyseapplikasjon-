@@ -13,7 +13,7 @@ from niluAPI.fetch_niluAPI import fetch_raw_data_niluAPI, process_raw_data, save
 
 class TestNILUFunctions(unittest.TestCase):
 
-    @patch("data_niluAPI.requests.get")
+    @patch("niluAPI.fetch_niluAPI.requests.get")
     def test_fetch_raw_data_success(self, mock_get):
         # Tester at data returneres korrekt ved gyldig respons
         mock_response = Mock()
@@ -25,13 +25,13 @@ class TestNILUFunctions(unittest.TestCase):
         self.assertIsInstance(result, list)
         self.assertGreater(len(result), 0)
 
-    @patch("data_niluAPI.requests.get")
+    @patch("niluAPI.fetch_niluAPI.requests.get")
     def test_fetch_raw_data_http_error(self, mock_get):
         mock_get.side_effect = RequestException("Network error")
         result = fetch_raw_data_niluAPI("http://fake-endpoint")
         self.assertEqual(result, [])
 
-    @patch("data_niluAPI.requests.get")
+    @patch("niluAPI.fetch_niluAPI.requests.get")
     def test_fetch_raw_data_invalid_json(self, mock_get):
         # Tester at funksjonen håndterer feil JSON-format
         mock_response = Mock()
@@ -64,14 +64,14 @@ class TestNILUFunctions(unittest.TestCase):
         result = process_raw_data([])
         self.assertTrue(result.empty)
 
-    @patch("data_niluAPI.pd.DataFrame.to_json")
+    @patch("niluAPI.fetch_niluAPI.pd.DataFrame.to_json")
     def test_save_to_json_success(self, mock_to_json):
         # Tester at lagring kalles riktig
         df = pd.DataFrame({"Dato": ["2023-01-01"], "NO2": [20]})
         save_to_json(df, "dummy.json")
         mock_to_json.assert_called_once()
 
-    @patch("data_niluAPI.pd.DataFrame.to_json", side_effect=Exception("Diskfeil"))
+    @patch("niluAPI.fetch_niluAPI.pd.DataFrame.to_json", side_effect=Exception("Diskfeil"))
     def test_save_to_json_failure(self, mock_to_json):
         # Tester at feil i lagring håndteres
         df = pd.DataFrame({"Dato": ["2023-01-01"], "NO2": [20]})
